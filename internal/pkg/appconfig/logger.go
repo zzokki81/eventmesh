@@ -21,13 +21,20 @@ const (
 
 	// LogLevelError enables logging for error conditions only.
 	LogLevelError LogLevel = "error"
+)
 
+const (
 	// LogFormatJSON outputs structured JSON logs.
 	LogFormatJSON LogFormat = "json"
 
 	// LogFormatText outputs human-readable text logs.
 	LogFormatText LogFormat = "text"
 
+	// LogFormatPretty outputs human-readable text logs with source info and colorization.
+	LogFormatPretty LogFormat = "pretty"
+)
+
+const (
 	// LogOutputStdout writes logs to standard output.
 	LogOutputStdout LogOutput = "stdout"
 
@@ -41,7 +48,7 @@ type LoggerConfig struct {
 	Level LogLevel `env:"LOG_LEVEL" envDefault:"info" validate:"oneof=debug info warn error"`
 
 	// Format defines the log output serialization format.
-	Format LogFormat `env:"LOG_FORMAT" envDefault:"json" validate:"oneof=json text"`
+	Format LogFormat `env:"LOG_FORMAT" envDefault:"json" validate:"oneof=json text pretty"`
 
 	// Output defines the destination stream used for log output.
 	Output LogOutput `env:"LOG_OUTPUT" envDefault:"stdout" validate:"oneof=stdout stderr"`

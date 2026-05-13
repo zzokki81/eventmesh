@@ -7,6 +7,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
+	"github.com/joho/godotenv"
 )
 
 // Config aggregates all application configuration sections.
@@ -31,6 +32,7 @@ type Config struct {
 // It uses the env package to parse environment variables into the Config struct fields.
 // If parsing fails, it returns an error with details about the failure.
 func Load() (*Config, error) {
+	_ = godotenv.Load()
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse environment variables: %w", err)

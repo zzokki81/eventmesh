@@ -7,6 +7,9 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/lmittmann/tint"
 
 	"github.com/zzokki81/eventmesh/internal/pkg/appconfig"
 )
@@ -72,9 +75,15 @@ func parseOutput(o appconfig.LogOutput) (io.Writer, error) {
 func buildHandler(format appconfig.LogFormat, w io.Writer, opts *slog.HandlerOptions) (slog.Handler, error) {
 	switch format {
 	case appconfig.LogFormatJSON:
-		return slog.NewJSONHandler(w, opts), nil // ← stvori JSON handler
+		return slog.NewJSONHandler(w, opts), nil
 	case appconfig.LogFormatText:
-		return slog.NewTextHandler(w, opts), nil // ← stvori Text handler
+		return slog.NewTextHandler(w, opts), nil
+	case appconfig.LogFormatPretty:
+		return tint.NewHandler(w, &tint.Options{
+			Level:      opts.Level,
+			AddSource:  opts.AddSource,
+			TimeFormat: time.Kitchen,
+		}), nil
 	default:
 		return nil, fmt.Errorf("unknown log format: %q", format)
 	}

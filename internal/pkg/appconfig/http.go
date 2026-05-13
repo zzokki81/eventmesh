@@ -17,4 +17,7 @@ type HTTPConfig struct {
 
 	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
 	ShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" envDefault:"15s" validate:"min=1s"`
+
+	// ReadHeaderTimeout is the maximum duration for reading request headers.
+	ReadHeaderTimeout time.Duration `env:"HTTP_READ_HEADER_TIMEOUT" envDefault:"5s" validate:"min=1s"`
 }
