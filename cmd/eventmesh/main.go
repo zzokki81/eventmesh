@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/internal/pkg/appconfig"
+	"github.com/zzokki81/eventmesh/internal/pkg/database"
 	"github.com/zzokki81/eventmesh/internal/pkg/logging"
 	"github.com/zzokki81/eventmesh/internal/transports/http"
 )
@@ -39,6 +40,14 @@ func run() error {
 	// Root context cancels on SIGINT/SIGTERM — drives graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Setup database connection pool
+	pool, err := database.NewPostgresPool(ctx, cfg.Postgres)
+	if err != nil {
+		return fmt.Errorf("failed to connect to postgres: %w", err)
+	}
+	defer pool.Close()
+	logger.Info("postgres connection pool initialized")
 
 	// Setup HTTP server and routes
 	router := http.NewRouter(logger)
