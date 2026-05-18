@@ -50,7 +50,7 @@ func run() error {
 	logger.Info("postgres connection pool initialized")
 
 	// Setup HTTP server and routes
-	router := http.NewRouter(logger)
+	router := http.NewRouter(logger, pool)
 	server := http.NewServer(cfg.HTTP, router, logger)
 
 	// Run server with graceful shutdown

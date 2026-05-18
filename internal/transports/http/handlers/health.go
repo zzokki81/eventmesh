@@ -1,19 +1,55 @@
-// Package handlers contains HTTP handler functions.
+// Package handlers contains HTTP handler functions and structs.
 package handlers
 
-import "net/http"
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const readinessTimeout = 2 * time.Second
+
+// Readiness checks that all downstream dependencies are reachable.
+// Used as the Kubernetes readiness probe target. A failure removes the pod
+// from service routing without restarting it — appropriate for transient
+// dependency outages.
+type Readiness struct {
+	db     *pgxpool.Pool
+	logger *slog.Logger
+}
+
+// NewReadiness constructs a Readiness handler with the given dependencies.
+func NewReadiness(db *pgxpool.Pool, logger *slog.Logger) *Readiness {
+	return &Readiness{
+		db:     db,
+		logger: logger,
+	}
+}
+
+// ServeHTTP implements http.Handler. It runs each dependency check with a
+// shared timeout budget and fails fast on the first unreachable dependency.
+func (r *Readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), readinessTimeout)
+	defer cancel()
+
+	if err := r.db.Ping(ctx); err != nil {
+		r.logger.Warn("readiness: postgres unreachable", "err", err)
+		http.Error(w, "postgres unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ready"))
+}
 
 // Health responds with 200 OK to indicate the process is alive.
-// Used as the Kubernetes liveness probe target.
+// Used as the Kubernetes liveness probe target. Intentionally trivial:
+// liveness should fail only when the process itself is unresponsive,
+// not when a downstream dependency is unavailable.
 func Health(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
-}
-
-// Ready responds with 200 OK to indicate the application is ready to serve traffic.
-// In later weeks this will check downstream dependencies (DB, NATS, Redis).
-// Used as the Kubernetes readiness probe target.
-func Ready(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ready"))
 }
