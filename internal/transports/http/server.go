@@ -64,7 +64,7 @@ func (s *Server) Run(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := s.srv.Shutdown(shutdownCtx); err != nil {
+	if err := s.srv.Shutdown(shutdownCtx); err != nil { // //nolint:contextcheck
 		return fmt.Errorf("http server shutdown: %w", err)
 	}
 
