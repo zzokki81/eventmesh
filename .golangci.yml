@@ -1,0 +1,62 @@
+version: "2"
+
+run:
+  go: "1.26"
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # Correctness
+    - errcheck       # unchecked errors
+    - govet          # suspicious constructs (shadow, atomic alignment, ...)
+    - staticcheck    # comprehensive static analysis (includes simple, stylecheck)
+    - ineffassign    # ineffectual assignments
+    - unused         # unused vars, funcs, consts, types
+
+    # Bugs / safety
+    - bodyclose      # http response body not closed
+    - contextcheck   # context propagated correctly
+    - errorlint      # error wrapping done right (errors.Is/As)
+    - noctx          # http calls without context
+    - nilerr         # returning nil when err != nil
+    - rowserrcheck   # sql Rows.Err() not checked
+
+    # Style / clarity
+    - misspell       # English typos
+    - whitespace     # trailing whitespace, leading newlines
+    - unconvert      # unnecessary type conversions
+    - prealloc       # slices that could be pre-allocated
+    - gocritic       # opinionated linter, mostly useful
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment   # too pedantic for app code
+    misspell:
+      locale: US
+    gocritic:
+      disabled-checks:
+        - ifElseChain    # noisy and often wrong
+
+  exclusions:
+    rules:
+      # Allow unchecked errors in tests where it's noise.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
