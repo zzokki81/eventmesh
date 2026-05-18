@@ -57,7 +57,7 @@ func validate(cfg *Config) error {
 }
 
 func formatValidationErrors(errs validator.ValidationErrors) error {
-	var msgs []string
+	msgs := make([]string, 0, len(errs))
 	for _, e := range errs {
 		msgs = append(msgs, fmt.Sprintf(
 			"  - %s: failed '%s' rule (got: %v)",

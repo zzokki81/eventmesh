@@ -54,7 +54,7 @@ func parseLevel(l appconfig.LogLevel) (slog.Level, error) {
 	case appconfig.LogLevelWarn:
 		return slog.LevelWarn, nil
 	default:
-		return 0, fmt.Errorf("unknown log level", l)
+		return 0, fmt.Errorf("unknown log level %q", l)
 	}
 }
 
@@ -68,7 +68,7 @@ func parseOutput(o appconfig.LogOutput) (io.Writer, error) {
 		return os.Stdout, nil
 	}
 
-	return nil, fmt.Errorf("unknown log output", o)
+	return nil, fmt.Errorf("unknown log output: %q", o)
 }
 
 // buildHandler constructs a slog.Handler in the requested format.
