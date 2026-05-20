@@ -25,6 +25,12 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
+
+	lg = lg.With(
+		"service", ServiceName,
+		"version", Version,
+		"commit", CommitHash,
+	)
 	slog.SetDefault(lg)
 
 	lg.Info("starting eventmesh", "http_addr", cfg.HTTP.Addr)
@@ -39,7 +45,7 @@ func Run() error {
 	defer pool.Close()
 	lg.Info("postgres connected", "max_conns", cfg.Postgres.MaxConns, "min_conns", cfg.Postgres.MinConns)
 
-	router := http.NewRouter(lg, pool)
+	router := http.NewRouter(lg, toHandlerInfo(CurrentInfo()), pool)
 	server := http.NewServer(cfg.HTTP, router, lg)
 
 	if err := server.Run(ctx); err != nil {

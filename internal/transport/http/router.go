@@ -14,13 +14,15 @@ import (
 // Middleware order matters: Recovery wraps everything (so it catches panics from
 // other middleware too), then RequestID assigns a correlation ID early so all
 // downstream logs and handlers can reference it.
-func NewRouter(logger *slog.Logger, db *pgxpool.Pool) http.Handler {
+func NewRouter(logger *slog.Logger, info handlers.InfoData, db *pgxpool.Pool) http.Handler {
 	mux := http.NewServeMux()
 
 	readiness := handlers.NewReadiness(db, logger)
+	infoHandler := handlers.NewInfo(info, logger)
 
 	mux.HandleFunc("GET /healthz", handlers.Health)
 	mux.Handle("GET /readyz", readiness)
+	mux.Handle("GET /info", infoHandler)
 
 	var handler http.Handler = mux
 	handler = middlewares.RequestID(handler)
