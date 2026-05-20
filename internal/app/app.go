@@ -51,7 +51,7 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("init nats: %w", err)
 	}
-	defer nc.Drain()
+	defer nc.Drain() //nolint:errcheck
 	lg.Info("connected to nats", "url", cfg.NATS.URL)
 
 	// JetStream context
