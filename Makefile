@@ -4,6 +4,8 @@ ifneq (,$(wildcard .env))
 	export
 endif
 
+COMPOSE_FILE := deployments/docker/docker-compose.yml
+
 .PHONY: help run build test lint up down logs clean \
         migrate-up migrate-down migrate-status migrate-new
 
@@ -43,13 +45,13 @@ clean:
 # --- Infrastructure ---
 
 up:
-	docker compose up -d
+	docker compose -f $(COMPOSE_FILE) up -d
 
 down:
-	docker compose down
+	docker compose -f $(COMPOSE_FILE) down
 
 logs:
-	docker compose logs -f
+	docker compose -f $(COMPOSE_FILE) logs -f
 
 # --- Migrations ---
 

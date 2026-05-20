@@ -1,4 +1,4 @@
-package appconfig
+package config
 
 // LogLevel defines the severity level used for log filtering.
 type LogLevel string

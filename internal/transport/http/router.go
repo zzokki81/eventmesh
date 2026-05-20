@@ -6,8 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/zzokki81/eventmesh/internal/transports/http/handlers"
-	"github.com/zzokki81/eventmesh/internal/transports/http/middlewares"
+	"github.com/zzokki81/eventmesh/internal/transport/http/handlers"
+	"github.com/zzokki81/eventmesh/internal/transport/http/middlewares"
 )
 
 // NewRouter constructs the HTTP router with all application routes and middleware.

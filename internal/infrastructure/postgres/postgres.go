@@ -1,5 +1,5 @@
-// Package database provides factories for database connection pools.
-package database
+// Package postgres provides factories for database connection pools.
+package postgres
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/zzokki81/eventmesh/internal/pkg/appconfig"
+	"github.com/zzokki81/eventmesh/internal/config"
 )
 
-// NewPostgresPool constructs a new pgxpool.Pool configured from cfg.
+// NewPool constructs a new pgxpool.Pool configured from cfg.
 // It verifies connectivity by pinging the database before returning.
 //
 // The caller is responsible for calling Close() on the returned pool
 // when the application shuts down.
-func NewPostgresPool(ctx context.Context, cfg appconfig.PostgresConfig) (*pgxpool.Pool, error) {
+func NewPool(ctx context.Context, cfg config.PostgresConfig) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres config: %w", err)

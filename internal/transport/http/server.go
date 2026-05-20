@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/zzokki81/eventmesh/internal/pkg/appconfig"
+	"github.com/zzokki81/eventmesh/internal/config"
 )
 
 // Server wraps the standard http.Server with lifecycle management
@@ -16,11 +16,11 @@ import (
 type Server struct {
 	srv    *http.Server
 	logger *slog.Logger
-	cfg    appconfig.HTTPConfig
+	cfg    config.HTTPConfig
 }
 
 // NewServer constructs a new HTTP server with the given handler and configuration.
-func NewServer(cfg appconfig.HTTPConfig, handler http.Handler, logger *slog.Logger) *Server {
+func NewServer(cfg config.HTTPConfig, handler http.Handler, logger *slog.Logger) *Server {
 	return &Server{
 		srv: &http.Server{
 			Addr:              cfg.Addr,
