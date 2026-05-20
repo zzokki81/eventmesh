@@ -9,6 +9,7 @@ import (
 
 	"github.com/zzokki81/eventmesh/internal/config"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/logger"
+	"github.com/zzokki81/eventmesh/internal/infrastructure/nats"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
 	"github.com/zzokki81/eventmesh/internal/transport/http"
 )
@@ -45,7 +46,33 @@ func Run() error {
 	defer pool.Close()
 	lg.Info("postgres connected", "max_conns", cfg.Postgres.MaxConns, "min_conns", cfg.Postgres.MinConns)
 
-	router := http.NewRouter(lg, toHandlerInfo(CurrentInfo()), pool)
+	// NATS connection
+	nc, err := nats.NewConnection(cfg.NATS)
+	if err != nil {
+		return fmt.Errorf("init nats: %w", err)
+	}
+	defer nc.Drain() //nolint:errcheck
+	lg.Info("connected to nats", "url", cfg.NATS.URL)
+
+	// JetStream context
+	js, err := nats.NewJetStream(ctx, nc)
+	if err != nil {
+		return fmt.Errorf("init jetstream: %w", err)
+	}
+	lg.Info("jetstream context initialized")
+
+	// Initialize stream (idempotent)
+	if err := nats.SetupStream(ctx, js, cfg.NATS.StreamName); err != nil {
+		return fmt.Errorf("setup stream: %w", err)
+	}
+
+	rc := http.RouterConfig{
+		Logger: lg,
+		Db:     pool,
+		Nats:   nc,
+		Info:   toHandlerInfo(CurrentInfo()),
+	}
+	router := http.NewRouter(rc)
 	server := http.NewServer(cfg.HTTP, router, lg)
 
 	if err := server.Run(ctx); err != nil {

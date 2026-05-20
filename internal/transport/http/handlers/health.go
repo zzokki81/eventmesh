@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/nats.go"
 )
 
 const readinessTimeout = 2 * time.Second
@@ -18,13 +19,15 @@ const readinessTimeout = 2 * time.Second
 // dependency outages.
 type Readiness struct {
 	db     *pgxpool.Pool
+	nats   *nats.Conn
 	logger *slog.Logger
 }
 
 // NewReadiness constructs a Readiness handler with the given dependencies.
-func NewReadiness(db *pgxpool.Pool, logger *slog.Logger) *Readiness {
+func NewReadiness(db *pgxpool.Pool, nats *nats.Conn, logger *slog.Logger) *Readiness {
 	return &Readiness{
 		db:     db,
+		nats:   nats,
 		logger: logger,
 	}
 }
@@ -38,6 +41,12 @@ func (r *Readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := r.db.Ping(ctx); err != nil {
 		r.logger.Warn("readiness: postgres unreachable", "err", err)
 		http.Error(w, "postgres unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	if !r.nats.IsConnected() {
+		r.logger.Warn("readiness: nats disconnected")
+		http.Error(w, "nats unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
