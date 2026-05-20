@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/internal/config"
-	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/logger"
+	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
 	"github.com/zzokki81/eventmesh/internal/transport/http"
 )
 
