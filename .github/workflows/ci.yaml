@@ -46,7 +46,12 @@ jobs:
         run: migrate -path migrations -database "$DATABASE_URL" up
 
       - name: Build
-        run: go build ./...
+        run: |
+          go build -ldflags "
+          -X github.com/zzokki81/eventmesh/internal/app.Version=${{ github.ref_name }}
+          -X github.com/zzokki81/eventmesh/internal/app.CommitHash=${GITHUB_SHA::7}
+          -X github.com/zzokki81/eventmesh/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          " -o bin/eventmesh ./cmd/eventmesh
 
       - name: Vet
         run: go vet ./...

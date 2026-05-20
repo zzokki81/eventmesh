@@ -6,6 +6,15 @@ endif
 
 COMPOSE_FILE := deployments/docker/docker-compose.yml
 
+# Build-time metadata
+VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+LDFLAGS := -X github.com/zzokki81/eventmesh/internal/app.Version=$(VERSION) \
+           -X github.com/zzokki81/eventmesh/internal/app.CommitHash=$(COMMIT_HASH) \
+           -X github.com/zzokki81/eventmesh/internal/app.BuildDate=$(BUILD_DATE)
+
 .PHONY: help run build test lint up down logs clean \
         migrate-up migrate-down migrate-status migrate-new
 
@@ -31,7 +40,7 @@ run:
 	go run ./cmd/eventmesh
 
 build:
-	go build -o bin/eventmesh ./cmd/eventmesh
+	go build -ldflags "$(LDFLAGS)" -o bin/eventmesh ./cmd/eventmesh
 
 test:
 	go test -race -v ./...
