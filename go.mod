@@ -10,6 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.3
 	github.com/nats-io/nats.go v1.52.0
+	github.com/shopspring/decimal v1.4.0
 )
 
 require (
