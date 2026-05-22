@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/zzokki81/eventmesh/internal/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/config"
 )
 
 // NewPool constructs a new pgxpool.Pool configured from cfg.

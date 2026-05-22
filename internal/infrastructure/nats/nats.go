@@ -9,7 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/zzokki81/eventmesh/internal/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/config"
 )
 
 // jetStreamInfoTimeout caps how long we wait when verifying JetStream

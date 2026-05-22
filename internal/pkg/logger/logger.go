@@ -11,7 +11,7 @@ import (
 
 	"github.com/lmittmann/tint"
 
-	"github.com/zzokki81/eventmesh/internal/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/config"
 )
 
 // New creates a new slog.Logger configured according to cfg.

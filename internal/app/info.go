@@ -3,7 +3,7 @@ package app
 import (
 	"runtime"
 
-	"github.com/zzokki81/eventmesh/internal/transport/http/handlers"
+	"github.com/zzokki81/eventmesh/internal/transports/http/handlers"
 )
 
 var (

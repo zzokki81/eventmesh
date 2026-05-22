@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/zzokki81/eventmesh/internal/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/config"
 )
 
 // Server wraps the standard http.Server with lifecycle management
