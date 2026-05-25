@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+
+	"github.com/zzokki81/eventmesh/internal/pkg/errs"
 )
 
 // Order represents a customer's order in the system.
@@ -31,13 +33,13 @@ type Order struct {
 // Validate checks if the Order's fields are valid. It returns an error if any field is invalid.
 func (o *Order) Validate() error {
 	if o.UserID == uuid.Nil {
-		return ErrInvalidUserID
+		return errs.ErrInvalidUserID
 	}
 	if o.Amount.LessThanOrEqual(decimal.Zero) {
-		return ErrInvalidAmount
+		return errs.ErrInvalidAmount
 	}
 	if !o.Status.IsValid() {
-		return ErrInvalidStatus
+		return errs.ErrInvalidStatus
 	}
 
 	return nil

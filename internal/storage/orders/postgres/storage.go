@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/zzokki81/eventmesh/internal/entities/order"
+	"github.com/zzokki81/eventmesh/internal/pkg/errs"
 
 	storage "github.com/zzokki81/eventmesh/internal/storage/orders"
 )
@@ -73,7 +74,7 @@ func (s *Storage) GetByID(ctx context.Context, id uuid.UUID) (*order.Order, erro
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, order.ErrNotFound
+			return nil, errs.ErrNotFound
 		}
 		return nil, fmt.Errorf("postgres: get order by id: %w", err)
 	}
