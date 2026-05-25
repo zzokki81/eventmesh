@@ -74,7 +74,7 @@ func (s *Storage) GetByID(ctx context.Context, id uuid.UUID) (*order.Order, erro
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.ErrNotFound
+			return nil, errs.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("postgres: get order by id: %w", err)
 	}

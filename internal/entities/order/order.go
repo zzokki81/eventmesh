@@ -33,13 +33,13 @@ type Order struct {
 // Validate checks if the Order's fields are valid. It returns an error if any field is invalid.
 func (o *Order) Validate() error {
 	if o.UserID == uuid.Nil {
-		return errs.ErrInvalidUserID
+		return errs.ErrInvalidOrderUserID
 	}
 	if o.Amount.LessThanOrEqual(decimal.Zero) {
-		return errs.ErrInvalidAmount
+		return errs.ErrInvalidOrderAmount
 	}
 	if !o.Status.IsValid() {
-		return errs.ErrInvalidStatus
+		return errs.ErrInvalidOrderStatus
 	}
 
 	return nil
