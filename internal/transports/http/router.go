@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
 
-	"github.com/zzokki81/eventmesh/internal/transport/http/handlers"
-	"github.com/zzokki81/eventmesh/internal/transport/http/middlewares"
+	"github.com/zzokki81/eventmesh/internal/transports/http/handlers"
+	"github.com/zzokki81/eventmesh/internal/transports/http/middlewares"
 )
 
 // RouterConfig holds dependencies for constructing the HTTP router.

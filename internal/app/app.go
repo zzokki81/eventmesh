@@ -7,11 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/zzokki81/eventmesh/internal/config"
-	"github.com/zzokki81/eventmesh/internal/infrastructure/logger"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/nats"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
-	"github.com/zzokki81/eventmesh/internal/transport/http"
+	"github.com/zzokki81/eventmesh/internal/pkg/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/logger"
+	"github.com/zzokki81/eventmesh/internal/transports/http"
 )
 
 // Run bootstraps the application: loads config, initializes infrastructure,
