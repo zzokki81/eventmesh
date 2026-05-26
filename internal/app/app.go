@@ -7,12 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/zzokki81/eventmesh/internal/entities/order"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/nats"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
 	"github.com/zzokki81/eventmesh/internal/pkg/config"
 	"github.com/zzokki81/eventmesh/internal/pkg/event"
 	"github.com/zzokki81/eventmesh/internal/pkg/logger"
-	"github.com/zzokki81/eventmesh/internal/transports/broker"
+	brokerNats "github.com/zzokki81/eventmesh/internal/transports/broker/nats"
+	"github.com/zzokki81/eventmesh/internal/transports/broker/handlers/eventlog"
 	"github.com/zzokki81/eventmesh/internal/transports/http"
 
 	orderSvc "github.com/zzokki81/eventmesh/internal/services/order/order"
@@ -71,10 +73,25 @@ func Run() error {
 		return fmt.Errorf("setup stream: %w", err)
 	}
 
-	publisher := broker.NewPublisher(js)
+	pub := brokerNats.NewPublisher(js)
 	eventBuilder := event.NewBuilder(ServiceName)
+
 	orderRepo := orderStorage.NewStorage(pool)
-	orderService := orderSvc.NewService(orderRepo, publisher, eventBuilder, lg)
+	orderService := orderSvc.NewService(orderRepo, pub, eventBuilder, lg)
+
+	sub := brokerNats.NewSubscriber(js, brokerNats.SubscriberConfig{
+		StreamName:   cfg.NATS.StreamName,
+		ConsumerName: "orders-logger",
+		Subject:      order.TopicCreated,
+		AckWait:      cfg.NATS.AckWait,
+		MaxDeliver:   cfg.NATS.MaxDeliver,
+	}, eventlog.New(lg), lg)
+
+	go func() {
+		if err := sub.Run(ctx); err != nil {
+			lg.Error("subscriber error", "err", err)
+		}
+	}()
 
 	rc := http.RouterConfig{
 		Logger:       lg,
