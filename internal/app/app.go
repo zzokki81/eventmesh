@@ -10,8 +10,13 @@ import (
 	"github.com/zzokki81/eventmesh/internal/infrastructure/nats"
 	"github.com/zzokki81/eventmesh/internal/infrastructure/postgres"
 	"github.com/zzokki81/eventmesh/internal/pkg/config"
+	"github.com/zzokki81/eventmesh/internal/pkg/event"
 	"github.com/zzokki81/eventmesh/internal/pkg/logger"
+	"github.com/zzokki81/eventmesh/internal/transports/broker"
 	"github.com/zzokki81/eventmesh/internal/transports/http"
+
+	orderSvc "github.com/zzokki81/eventmesh/internal/services/order/order"
+	orderStorage "github.com/zzokki81/eventmesh/internal/storage/orders/postgres"
 )
 
 // Run bootstraps the application: loads config, initializes infrastructure,
@@ -66,11 +71,17 @@ func Run() error {
 		return fmt.Errorf("setup stream: %w", err)
 	}
 
+	publisher := broker.NewPublisher(js)
+	eventBuilder := event.NewBuilder(ServiceName)
+	orderRepo := orderStorage.NewStorage(pool)
+	orderService := orderSvc.NewService(orderRepo, publisher, eventBuilder, lg)
+
 	rc := http.RouterConfig{
-		Logger: lg,
-		Db:     pool,
-		Nats:   nc,
-		Info:   toHandlerInfo(CurrentInfo()),
+		Logger:       lg,
+		Db:           pool,
+		Nats:         nc,
+		Info:         toHandlerInfo(CurrentInfo()),
+		OrderService: orderService,
 	}
 	router := http.NewRouter(rc)
 	server := http.NewServer(cfg.HTTP, router, lg)

@@ -5,51 +5,35 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-
-	"github.com/zzokki81/eventmesh/internal/pkg/errs"
 )
 
 // Order represents a customer's order in the system.
 type Order struct {
-	// Id is the unique identifier for the order.
+	// ID is the unique identifier of the order.
 	ID uuid.UUID
 
-	// UserId is the identifier of the user who placed the order.
+	// UserID identifies the user who placed the order.
 	UserID uuid.UUID
 
-	// Amount is the total amount for the order.
+	// Amount is the order total.
 	Amount decimal.Decimal
 
-	// Status represents the current status of the order (e.g., pending, completed, processing, failed).
+	// Status is the current lifecycle state of the order.
 	Status Status
 
 	// CreatedAt is the timestamp when the order was created.
 	CreatedAt time.Time
 
-	// UpdatedAt is the timestamp when the order was last updated.
+	// UpdatedAt is the timestamp of the last modification.
 	UpdatedAt time.Time
 }
 
-// Validate checks if the Order's fields are valid. It returns an error if any field is invalid.
-func (o *Order) Validate() error {
-	if o.UserID == uuid.Nil {
-		return errs.ErrInvalidOrderUserID
-	}
-	if o.Amount.LessThanOrEqual(decimal.Zero) {
-		return errs.ErrInvalidOrderAmount
-	}
-	if !o.Status.IsValid() {
-		return errs.ErrInvalidOrderStatus
-	}
-
-	return nil
-}
-
-// New creates a new Order with generated ID and timestamps, initialized to pending status.
-// Returns an error if the input fails validation.
-func New(userID uuid.UUID, amount decimal.Decimal) (*Order, error) {
-	now := time.Now()
-	o := &Order{
+// New constructs a new Order with a generated ID, current timestamps,
+// and Status set to StatusPending. The caller is responsible for
+// validating inputs before invoking New.
+func New(userID uuid.UUID, amount decimal.Decimal) *Order {
+	now := time.Now().UTC()
+	return &Order{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Amount:    amount,
@@ -57,10 +41,4 @@ func New(userID uuid.UUID, amount decimal.Decimal) (*Order, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-
-	if err := o.Validate(); err != nil {
-		return nil, err
-	}
-
-	return o, nil
 }
