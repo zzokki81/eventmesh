@@ -1,3 +1,5 @@
+// Package orders defines the storage contract for order persistence.
+// Concrete implementations live in subpackages (e.g. orders/postgres).
 package orders
 
 import (
@@ -8,11 +10,12 @@ import (
 	"github.com/zzokki81/eventmesh/internal/entities/order"
 )
 
-// OrderRepository defines the contract for persisting and retrieving orders.
+// OrderRepository persists and retrieves Order aggregates.
 type OrderRepository interface {
-	// Create should persist a new order in the repository. Returns an error if the operation fails.
+	// Create stores a new order. Returns an error if persistence fails.
 	Create(ctx context.Context, o *order.Order) error
 
-	// GetByID should retrieve an order by its unique identifier. Returns ErrNotFound if no order matches.
+	// GetByID returns the order with the given id, or errs.ErrOrderNotFound
+	// if no such order exists.
 	GetByID(ctx context.Context, id uuid.UUID) (*order.Order, error)
 }
