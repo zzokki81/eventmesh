@@ -24,7 +24,6 @@ func NewOrderHandler(s orderSvc.Service) *OrderHandler {
 
 // Create handles POST /orders. It decodes the request body, delegates to
 // the service, and writes the resulting order or an error response.
-//
 func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var d dto.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
