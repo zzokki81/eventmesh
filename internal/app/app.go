@@ -14,11 +14,11 @@ import (
 	"github.com/zzokki81/eventmesh/internal/pkg/event"
 	"github.com/zzokki81/eventmesh/internal/pkg/logger"
 	"github.com/zzokki81/eventmesh/internal/transports/broker/handlers/eventlog"
-	brokerNats "github.com/zzokki81/eventmesh/internal/transports/broker/nats"
 	"github.com/zzokki81/eventmesh/internal/transports/http"
 
 	orderSvc "github.com/zzokki81/eventmesh/internal/services/order/order"
 	orderStorage "github.com/zzokki81/eventmesh/internal/storage/orders/postgres"
+	brokerNats "github.com/zzokki81/eventmesh/internal/transports/broker/nats"
 )
 
 // Run bootstraps the application: loads config, initializes infrastructure,

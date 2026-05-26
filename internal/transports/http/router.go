@@ -31,10 +31,8 @@ type RouterConfig struct {
 	Info handlers.InfoData
 }
 
-// NewRouter constructs the HTTP router with all application routes and middleware.
-// Middleware order matters: Recovery wraps everything (so it catches panics from
-// other middleware too), then RequestID assigns a correlation ID early so all
-// downstream logs and handlers can reference it.
+// NewRouter registers the application routes and wraps them in the middleware
+// chain. See each middleware's own documentation for its behavior.
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
@@ -48,8 +46,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.HandleFunc("POST /orders", orderHandler.Create)
 
 	var handler http.Handler = mux
-	handler = middlewares.RequestID(handler)
+	// The order of middleware is important: each line wraps the previous handler,
+	// so the last applied is the outermost and runs first. Read bottom-up for the
+	// execution order an incoming request follows.
 	handler = middlewares.Recovery(cfg.Logger)(handler)
+	handler = middlewares.AccessLog(cfg.Logger, "/healthz", "/readyz")(handler)
+	handler = middlewares.RequestID(handler)
 
 	return handler
 }
