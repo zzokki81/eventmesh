@@ -6,16 +6,18 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/zzokki81/eventmesh/internal/entities/order"
 )
 
 // OrderRepository persists and retrieves Order aggregates.
 type OrderRepository interface {
-	// Create stores a new order. Returns an error if persistence fails.
-	Create(ctx context.Context, o *order.Order) error
+	// CreateInTx inserts a new order within the caller-owned transaction. The
+	// transaction must commit for the order to be persisted.
+	CreateInTx(ctx context.Context, tx pgx.Tx, o *order.Order) error
 
-	// GetByID returns the order with the given id, or errs.ErrOrderNotFound
-	// if no such order exists.
+	// GetByID retrieves an order by its unique identifier. If no order exists
+	// with the given ID, it returns order.ErrNotFound.
 	GetByID(ctx context.Context, id uuid.UUID) (*order.Order, error)
 }

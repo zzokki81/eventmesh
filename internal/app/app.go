@@ -13,11 +13,13 @@ import (
 	"github.com/zzokki81/eventmesh/internal/pkg/config"
 	"github.com/zzokki81/eventmesh/internal/pkg/event"
 	"github.com/zzokki81/eventmesh/internal/pkg/logger"
+	"github.com/zzokki81/eventmesh/internal/relay"
 	"github.com/zzokki81/eventmesh/internal/transports/broker/handlers/eventlog"
 	"github.com/zzokki81/eventmesh/internal/transports/http"
 
 	orderSvc "github.com/zzokki81/eventmesh/internal/services/order/order"
 	orderStorage "github.com/zzokki81/eventmesh/internal/storage/orders/postgres"
+	outboxStorage "github.com/zzokki81/eventmesh/internal/storage/outbox/postgres"
 	brokerNats "github.com/zzokki81/eventmesh/internal/transports/broker/nats"
 )
 
@@ -75,9 +77,17 @@ func Run() error {
 
 	pub := brokerNats.NewPublisher(js)
 	eventBuilder := event.NewBuilder(ServiceName)
-
 	orderRepo := orderStorage.NewStorage(pool)
-	orderService := orderSvc.NewService(orderRepo, pub, eventBuilder, lg)
+	outboxRepo := outboxStorage.NewStorage()
+	orderService := orderSvc.NewService(orderRepo, outboxRepo, pool, eventBuilder, lg)
+
+	// Outbox relay: drains pending outbox rows and publishes them to the broker.
+	relayProc := relay.New(pool, outboxRepo, pub, cfg.Relay, lg)
+	go func() {
+		if err := relayProc.Run(ctx); err != nil {
+			lg.Error("relay error", "err", err)
+		}
+	}()
 
 	sub := brokerNats.NewSubscriber(js, brokerNats.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,

@@ -9,9 +9,8 @@ import (
 // Publisher emits envelopes to the broker. Implementations are responsible
 // for serialization and delivery semantics.
 type Publisher interface {
-	// Publish sends env to subject and returns once the broker has
-	// acknowledged the message.
-	Publish(ctx context.Context, subject string, env *event.Envelope) error
+	// Publish sends pre-serialized data to subject and waits for the server ack.
+	Publish(ctx context.Context, subject string, data []byte) error
 }
 
 // Subscriber binds a consumer to a MessageHandler and drives the dispatch

@@ -4,12 +4,10 @@ package nats
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/zzokki81/eventmesh/internal/pkg/event"
 	"github.com/zzokki81/eventmesh/internal/transports/broker"
 )
 
@@ -23,16 +21,10 @@ func NewPublisher(js jetstream.JetStream) broker.Publisher {
 	return &publisher{js: js}
 }
 
-// Publish marshals env to JSON and publishes it to subject, waiting for
-// a server-side acknowledgement.
-func (p *publisher) Publish(ctx context.Context, subject string, env *event.Envelope) error {
-	body, err := json.Marshal(env)
-	if err != nil {
-		return fmt.Errorf("marshal envelope: %w", err)
-	}
-
-	if _, err := p.js.Publish(ctx, subject, body); err != nil {
-		return fmt.Errorf("publish event to %s: %w", subject, err)
+// Publish sends pre-serialized data to subject and waits for the server ack.
+func (p *publisher) Publish(ctx context.Context, subject string, data []byte) error {
+	if _, err := p.js.Publish(ctx, subject, data); err != nil {
+		return fmt.Errorf("publish raw to %s: %w", subject, err)
 	}
 	return nil
 }

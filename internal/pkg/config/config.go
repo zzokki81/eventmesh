@@ -24,6 +24,9 @@ type Config struct {
 	// Redis client configuration.
 	Redis RedisConfig
 
+	// Relay configuration for the relay component.
+	Relay RelayConfig
+
 	// Logger configuration.
 	Logger LoggerConfig
 }
