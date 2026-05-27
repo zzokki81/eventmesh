@@ -77,7 +77,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	events, err := r.outbox.ListPendingInTx(ctx, tx, r.cfg.BatchSize)
 	if err != nil {

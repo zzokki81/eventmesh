@@ -81,7 +81,7 @@ func (s *Service) Create(ctx context.Context, req *order.CreateRequest) (*order.
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if err := s.orderStorage.CreateInTx(ctx, tx, o); err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
