@@ -2,23 +2,32 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
-	"github.com/zzokki81/eventmesh/internal/entities/order"
-	"github.com/zzokki81/eventmesh/internal/pkg/event"
-	"github.com/zzokki81/eventmesh/internal/transports/broker"
+	"github.com/jackc/pgx/v5/pgxpool"
 
-	storage "github.com/zzokki81/eventmesh/internal/storage/orders"
+	"github.com/zzokki81/eventmesh/internal/entities/order"
+	"github.com/zzokki81/eventmesh/internal/entities/outbox"
+	"github.com/zzokki81/eventmesh/internal/pkg/event"
+
+	orderStorage "github.com/zzokki81/eventmesh/internal/storage/orders"
+	outboxStorage "github.com/zzokki81/eventmesh/internal/storage/outbox"
 )
 
-// Service orchestrates order operations: persistence and event publishing.
+// Service orchestrates order creation: it persists the order and enqueues the
+// resulting event in the outbox within a single transaction. A separate relay
+// publishes the enqueued events to the broker.
 type Service struct {
-	// storage persists and retrieves Order aggregates.
-	storage storage.OrderRepository
+	// orderStorage persists and retrieves Order aggregates.
+	orderStorage orderStorage.OrderRepository
 
-	// publisher emits domain events to the broker.
-	publisher broker.Publisher
+	// outboxStorage enqueues events in the transactional outbox.
+	outboxStorage outboxStorage.OutboxRepository
+
+	// pool owns the transaction that spans the order write and outbox enqueue.
+	pool *pgxpool.Pool
 
 	// eventBuilder wraps payloads in a standard envelope.
 	eventBuilder *event.Builder
@@ -28,12 +37,19 @@ type Service struct {
 }
 
 // NewService wires the order service with its dependencies.
-func NewService(storage storage.OrderRepository, publisher broker.Publisher, eventBuilder *event.Builder, logger *slog.Logger) *Service {
+func NewService(
+	orderStorage orderStorage.OrderRepository,
+	outboxStorage outboxStorage.OutboxRepository,
+	pool *pgxpool.Pool,
+	eventBuilder *event.Builder,
+	logger *slog.Logger,
+) *Service {
 	return &Service{
-		storage:      storage,
-		publisher:    publisher,
-		eventBuilder: eventBuilder,
-		logger:       logger,
+		orderStorage:  orderStorage,
+		outboxStorage: outboxStorage,
+		pool:          pool,
+		eventBuilder:  eventBuilder,
+		logger:        logger,
 	}
 }
 
@@ -48,21 +64,36 @@ func (s *Service) Create(ctx context.Context, req *order.CreateRequest) (*order.
 
 	o := order.New(req.UserID, req.Amount)
 
-	if err := s.storage.Create(ctx, o); err != nil {
-		return nil, fmt.Errorf("failed to create order: %w", err)
-	}
-
 	envelope, err := s.eventBuilder.Build(order.TopicCreated, order.TopicCreatedVersion, order.NewOrderCreated(o))
 	if err != nil {
 		return nil, fmt.Errorf("build order created event: %w", err)
 	}
 
-	if err := s.publisher.Publish(ctx, order.TopicCreated, envelope); err != nil {
-		return nil, fmt.Errorf("publish event %s for persisted order %s: %w",
-			envelope.ID, o.ID, err)
+	payload, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
 
-	s.logger.InfoContext(ctx, "order created",
-		"order_id", o.ID, "user_id", o.UserID, "event_id", envelope.ID)
+	outboxEvent := outbox.New(o.ID, order.TopicCreated, payload)
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	if err := s.orderStorage.CreateInTx(ctx, tx, o); err != nil {
+		return nil, fmt.Errorf("create order: %w", err)
+	}
+
+	if err := s.outboxStorage.CreateInTx(ctx, tx, outboxEvent); err != nil {
+		return nil, fmt.Errorf("insert outbox event: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
 	return o, nil
 }
