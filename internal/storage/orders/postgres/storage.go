@@ -34,11 +34,11 @@ func NewStorage(pool *pgxpool.Pool) *Storage {
 	return &Storage{pool: pool}
 }
 
-// CreateInTx inserts a new order into the orders table within the caller-owned transaction tx.
+// Create inserts a new order into the orders table within the caller-owned transaction tx.
 //
 //	The transaction must be committed for the order to be persisted.
 //	Returns an error if the insert fails; the caller is responsible for rolling back the transaction.
-func (s *Storage) CreateInTx(ctx context.Context, tx pgx.Tx, o *order.Order) error {
+func (s *Storage) Create(ctx context.Context, tx pgx.Tx, o *order.Order) error {
 	q := `INSERT INTO orders (id, user_id, amount, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 

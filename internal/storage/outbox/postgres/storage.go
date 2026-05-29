@@ -25,11 +25,11 @@ func NewStorage() *Storage {
 	return &Storage{}
 }
 
-// CreateInTx inserts the outbox event into outbox_events within tx.
+// Create inserts the outbox event into outbox_events within tx.
 // The transaction must be committed for the event to be durable; the
 // caller is responsible for rolling back on failure. The row stays in
 // pending status until the relay processes it.
-func (s *Storage) CreateInTx(ctx context.Context, tx pgx.Tx, oe *outbox.Event) error {
+func (s *Storage) Create(ctx context.Context, tx pgx.Tx, oe *outbox.Event) error {
 	q := `INSERT INTO outbox_events (id, aggregate_id, event_type, payload, created_at)
 	           VALUES ($1, $2, $3, $4, $5)`
 
@@ -46,10 +46,10 @@ func (s *Storage) CreateInTx(ctx context.Context, tx pgx.Tx, oe *outbox.Event) e
 	return nil
 }
 
-// ListPendingInTx returns up to limit pending events ordered by creation time.
+// ListPending returns up to limit pending events ordered by creation time.
 // Each row is locked with FOR UPDATE SKIP LOCKED so concurrent relays do not
 // pick the same event; rows already locked by another transaction are skipped.
-func (s *Storage) ListPendingInTx(ctx context.Context, tx pgx.Tx, limit int) ([]*outbox.Event, error) {
+func (s *Storage) ListPending(ctx context.Context, tx pgx.Tx, limit int) ([]*outbox.Event, error) {
 	q := `SELECT id, aggregate_id, event_type, payload, status, attempt_count, created_at, processed_at
 	           FROM outbox_events
 	           WHERE status = 'pending'
@@ -86,10 +86,10 @@ func (s *Storage) ListPendingInTx(ctx context.Context, tx pgx.Tx, limit int) ([]
 	return events, nil
 }
 
-// MarkAsPublishedInTx transitions the event to the published terminal state
-// and stamps processed_at. The row will no longer be returned by ListPendingInTx.
-func (s *Storage) MarkAsPublishedInTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
-	const q = `UPDATE outbox_events
+// MarkAsPublished transitions the event to the published terminal state
+// and stamps processed_at. The row will no longer be returned by ListPending.
+func (s *Storage) MarkAsPublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	q := `UPDATE outbox_events
 	           SET status = 'published', processed_at = NOW()
 	           WHERE id = $1`
 
@@ -99,11 +99,11 @@ func (s *Storage) MarkAsPublishedInTx(ctx context.Context, tx pgx.Tx, id uuid.UU
 	return nil
 }
 
-// MarkAsFailedInTx increments the attempt counter. If the new count reaches
+// MarkAsFailed increments the attempt counter. If the new count reaches
 // maxAttempts the event transitions to the dead terminal state; otherwise it
 // stays pending so the relay can retry.
-func (s *Storage) MarkAsFailedInTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, maxAttempts int) error {
-	const q = `UPDATE outbox_events
+func (s *Storage) MarkAsFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, maxAttempts int) error {
+	q := `UPDATE outbox_events
 	           SET attempt_count = attempt_count + 1,
 	               status = CASE WHEN attempt_count + 1 >= $2 THEN 'dead' ELSE 'pending' END,
 	               processed_at = CASE WHEN attempt_count + 1 >= $2 THEN NOW() ELSE processed_at END

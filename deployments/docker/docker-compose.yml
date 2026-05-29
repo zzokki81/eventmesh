@@ -1,10 +1,12 @@
+name: eventmesh
+
 services:
 
   postgres:
     image: postgres:18.3-alpine
     container_name: eventmesh-postgres
     env_file:
-      - .env
+      - ../../.env
     ports:
       - "127.0.0.1:5432:5432"
     volumes:

@@ -13,9 +13,9 @@ import (
 
 // OrderRepository persists and retrieves Order aggregates.
 type OrderRepository interface {
-	// CreateInTx inserts a new order within the caller-owned transaction. The
+	// Create inserts a new order within the caller-owned transaction. The
 	// transaction must commit for the order to be persisted.
-	CreateInTx(ctx context.Context, tx pgx.Tx, o *order.Order) error
+	Create(ctx context.Context, tx pgx.Tx, o *order.Order) error
 
 	// GetByID retrieves an order by its unique identifier. If no order exists
 	// with the given ID, it returns order.ErrNotFound.

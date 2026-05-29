@@ -79,7 +79,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	events, err := r.outbox.ListPendingInTx(ctx, tx, r.cfg.BatchSize)
+	events, err := r.outbox.ListPending(ctx, tx, r.cfg.BatchSize)
 	if err != nil {
 		return fmt.Errorf("list pending: %w", err)
 	}
@@ -96,7 +96,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 				"attempt", e.AttemptCount+1,
 				"err", err,
 			)
-			if markErr := r.outbox.MarkAsFailedInTx(ctx, tx, e.ID, r.cfg.MaxAttempts); markErr != nil {
+			if markErr := r.outbox.MarkAsFailed(ctx, tx, e.ID, r.cfg.MaxAttempts); markErr != nil {
 				r.logger.ErrorContext(ctx, "mark as failed failed",
 					"event_id", e.ID, "err", markErr,
 				)
@@ -104,7 +104,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 			continue
 		}
 
-		if err := r.outbox.MarkAsPublishedInTx(ctx, tx, e.ID); err != nil {
+		if err := r.outbox.MarkAsPublished(ctx, tx, e.ID); err != nil {
 			r.logger.ErrorContext(ctx, "mark as published failed",
 				"event_id", e.ID, "err", err,
 			)
