@@ -12,7 +12,7 @@ var (
 	BuildDate  = "unknown"
 )
 
-const ServiceName = "eventmesh"
+const ServiceName = "order"
 
 type Info struct {
 	Service   string `json:"service"`
