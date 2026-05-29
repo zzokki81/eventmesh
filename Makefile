@@ -1,4 +1,3 @@
-# Load .env if present and export all variables to recipes.
 ifneq (,$(wildcard .env))
 	include .env
 	export
@@ -6,19 +5,16 @@ endif
 
 COMPOSE_FILE := deployments/docker/docker-compose.yml
 
-# Build-time metadata
 VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
-LDFLAGS := -X github.com/zzokki81/eventmesh/internal/app.Version=$(VERSION) \
-           -X github.com/zzokki81/eventmesh/internal/app.CommitHash=$(COMMIT_HASH) \
-           -X github.com/zzokki81/eventmesh/internal/app.BuildDate=$(BUILD_DATE)
+LDFLAGS := -X github.com/zzokki81/eventmesh/order/app.Version=$(VERSION) \
+           -X github.com/zzokki81/eventmesh/order/app.CommitHash=$(COMMIT_HASH) \
+           -X github.com/zzokki81/eventmesh/order/app.BuildDate=$(BUILD_DATE)
 
-.PHONY: help run build test lint up down logs clean \
-        migrate-up migrate-down migrate-status migrate-new
+.PHONY: help run build test lint up down logs clean migrate-up migrate-down migrate-status migrate-new
 
-# Default target — list available commands.
 help:
 	@echo "Available targets:"
 	@echo "  run             - Run the application locally"
@@ -34,13 +30,11 @@ help:
 	@echo "  migrate-status  - Show current migration version"
 	@echo "  migrate-new     - Create a new migration (usage: make migrate-new name=create_outbox)"
 
-# --- Application ---
-
 run:
-	go run ./cmd/eventmesh
+	go run ./cmd/order
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o bin/eventmesh ./cmd/eventmesh
+	go build -ldflags "$(LDFLAGS)" -o bin/order ./cmd/order
 
 test:
 	go test -race -v ./...
@@ -51,8 +45,6 @@ lint:
 clean:
 	rm -rf bin/
 
-# --- Infrastructure ---
-
 up:
 	docker compose -f $(COMPOSE_FILE) up -d
 
@@ -62,20 +54,15 @@ down:
 logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
 
-# --- Migrations ---
-
 migrate-up:
-	migrate -path migrations -database "$(DATABASE_URL)" up
+	migrate -path order/migrations -database "$(DATABASE_URL)" up
 
 migrate-down:
-	migrate -path migrations -database "$(DATABASE_URL)" down 1
+	migrate -path order/migrations -database "$(DATABASE_URL)" down 1
 
 migrate-status:
-	migrate -path migrations -database "$(DATABASE_URL)" version
+	migrate -path order/migrations -database "$(DATABASE_URL)" version
 
 migrate-new:
-	@if [ -z "$(name)" ]; then \
-		echo "Error: name is required. Usage: make migrate-new name=create_outbox"; \
-		exit 1; \
-	fi
-	migrate create -ext sql -dir migrations -seq $(name)
+	@if [ -z "$(name)" ]; then echo "Error: name required. Usage: make migrate-new name=create_outbox"; exit 1; fi
+	migrate create -ext sql -dir order/migrations -seq $(name)
