@@ -8,8 +8,8 @@ import (
 
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/zzokki81/eventmesh/pkg/event"
 	"github.com/zzokki81/eventmesh/pkg/broker"
+	"github.com/zzokki81/eventmesh/pkg/event"
 )
 
 // subscriber is the JetStream-backed broker.Subscriber implementation.
