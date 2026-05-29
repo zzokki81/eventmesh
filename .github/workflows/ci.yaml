@@ -43,15 +43,15 @@ jobs:
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.17.1
 
       - name: Apply migrations
-        run: migrate -path migrations -database "$DATABASE_URL" up
+        run: migrate -path order/migrations -database "$DATABASE_URL" up
 
       - name: Build
         run: |
           go build -ldflags "
-          -X github.com/zzokki81/eventmesh/internal/app.Version=${{ github.ref_name }}
-          -X github.com/zzokki81/eventmesh/internal/app.CommitHash=${GITHUB_SHA::7}
-          -X github.com/zzokki81/eventmesh/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          " -o bin/eventmesh ./cmd/eventmesh
+          -X github.com/zzokki81/eventmesh/order/app.Version=${{ github.ref_name }}
+          -X github.com/zzokki81/eventmesh/order/app.CommitHash=${GITHUB_SHA::7}
+          -X github.com/zzokki81/eventmesh/order/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          " -o bin/order ./cmd/order
 
       - name: Vet
         run: go vet ./...
