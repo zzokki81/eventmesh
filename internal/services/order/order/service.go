@@ -83,11 +83,11 @@ func (s *Service) Create(ctx context.Context, req *order.CreateRequest) (*order.
 
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := s.orderStorage.CreateInTx(ctx, tx, o); err != nil {
+	if err := s.orderStorage.Create(ctx, tx, o); err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
 	}
 
-	if err := s.outboxStorage.CreateInTx(ctx, tx, outboxEvent); err != nil {
+	if err := s.outboxStorage.Create(ctx, tx, outboxEvent); err != nil {
 		return nil, fmt.Errorf("insert outbox event: %w", err)
 	}
 
