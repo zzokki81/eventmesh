@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/zzokki81/eventmesh/order/entities/order"
+	"github.com/zzokki81/eventmesh/order/domain"
 	"github.com/zzokki81/eventmesh/order/transports/http/dto"
 	"github.com/zzokki81/eventmesh/order/transports/http/response"
 
-	orderSvc "github.com/zzokki81/eventmesh/order/services/order"
+	orderSvc "github.com/zzokki81/eventmesh/order/service"
 )
 
 // OrderHandler exposes order resources over HTTP.
 type OrderHandler struct {
 	// service performs the order use cases.
-	service orderSvc.Service
+	service orderSvc.Orders
 }
 
 // NewOrderHandler constructs an OrderHandler backed by the given service.
-func NewOrderHandler(s orderSvc.Service) *OrderHandler {
+func NewOrderHandler(s orderSvc.Orders) *OrderHandler {
 	return &OrderHandler{service: s}
 }
 
@@ -31,7 +31,7 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := order.CreateRequestFrom(d.UserID, d.Amount)
+	req, err := domain.CreateRequestFrom(d.UserID, d.Amount)
 	if err != nil {
 		response.WriteError(w, r, err)
 		return

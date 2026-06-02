@@ -9,9 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/zzokki81/eventmesh/order/config"
+	"github.com/zzokki81/eventmesh/order/repository"
 	"github.com/zzokki81/eventmesh/pkg/broker"
-
-	outboxStorage "github.com/zzokki81/eventmesh/order/storage/outbox"
 )
 
 // Relay drains the transactional outbox by polling pending rows and
@@ -20,7 +19,7 @@ import (
 // publishes asynchronously with at-least-once delivery semantics.
 type Relay struct {
 	pool      *pgxpool.Pool
-	outbox    outboxStorage.OutboxRepository
+	outbox    repository.Outbox
 	publisher broker.Publisher
 	cfg       config.RelayConfig
 	logger    *slog.Logger
@@ -29,7 +28,7 @@ type Relay struct {
 // New returns a Relay wired with its dependencies.
 func New(
 	pool *pgxpool.Pool,
-	outbox outboxStorage.OutboxRepository,
+	outbox repository.Outbox,
 	publisher broker.Publisher,
 	cfg config.RelayConfig,
 	logger *slog.Logger,

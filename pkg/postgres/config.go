@@ -1,9 +1,9 @@
-package config
+package postgres
 
 import "time"
 
-// PostgresConfig represents the configuration for PostgreSQL database connection.
-type PostgresConfig struct {
+// Config holds all settings required to establish and maintain a PostgreSQL connection pool.
+type Config struct {
 	// URL is the connection string for the PostgreSQL database, including credentials and host information.
 	URL string `env:"DATABASE_URL" validate:"required,url"`
 

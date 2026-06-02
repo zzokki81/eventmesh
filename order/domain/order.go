@@ -1,4 +1,4 @@
-package order
+package domain
 
 import (
 	"time"
@@ -19,7 +19,7 @@ type Order struct {
 	Amount decimal.Decimal
 
 	// Status is the current lifecycle state of the order.
-	Status Status
+	Status OrderStatus
 
 	// CreatedAt is the timestamp when the order was created.
 	CreatedAt time.Time
@@ -29,7 +29,7 @@ type Order struct {
 }
 
 // New constructs a new Order with a generated ID, current timestamps,
-// and Status set to StatusPending. The caller is responsible for
+// and Status set to OrderStatusPending. The caller is responsible for
 // validating inputs before invoking New.
 func New(userID uuid.UUID, amount decimal.Decimal) *Order {
 	now := time.Now().UTC()
@@ -37,7 +37,7 @@ func New(userID uuid.UUID, amount decimal.Decimal) *Order {
 		ID:        uuid.New(),
 		UserID:    userID,
 		Amount:    amount,
-		Status:    StatusPending,
+		Status:    OrderStatusPending,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}

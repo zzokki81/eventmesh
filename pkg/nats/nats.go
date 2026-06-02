@@ -8,8 +8,6 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-
-	"github.com/zzokki81/eventmesh/order/config"
 )
 
 // jetStreamInfoTimeout caps how long we wait when verifying JetStream
@@ -19,7 +17,7 @@ const jetStreamInfoTimeout = 5 * time.Second
 // NewConnection creates a new NATS connection configured from cfg.
 // The caller is responsible for calling Drain() on the returned connection
 // when the application shuts down.
-func NewConnection(cfg config.NATSConfig) (*nats.Conn, error) {
+func NewConnection(cfg Config) (*nats.Conn, error) {
 	conn, err := nats.Connect(cfg.URL,
 		nats.Name("eventmesh"),
 		nats.ReconnectWait(cfg.ReconnectWait),
@@ -62,7 +60,7 @@ func NewJetStream(ctx context.Context, conn *nats.Conn) (jetstream.JetStream, er
 // The operation is idempotent and safe to execute on every application startup.
 // If a stream with the same name already exists, its configuration will not be modified.
 // Any changes to the stream configuration require manual deletion of the existing stream
-// for updates to take effect.s
+// for updates to take effect.
 func SetupStream(ctx context.Context, js jetstream.JetStream, name string) error {
 	_, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      name,

@@ -1,4 +1,4 @@
-package order
+package service
 
 import (
 	"context"
@@ -8,23 +8,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/zzokki81/eventmesh/order/entities/order"
-	"github.com/zzokki81/eventmesh/order/entities/outbox"
+	"github.com/zzokki81/eventmesh/order/domain"
+	"github.com/zzokki81/eventmesh/order/repository"
 	"github.com/zzokki81/eventmesh/pkg/event"
-
-	orderStorage "github.com/zzokki81/eventmesh/order/storage/orders"
-	outboxStorage "github.com/zzokki81/eventmesh/order/storage/outbox"
 )
 
-// Service orchestrates order creation: it persists the order and enqueues the
+// orders orchestrates order creation: it persists the order and enqueues the
 // resulting event in the outbox within a single transaction. A separate relay
 // publishes the enqueued events to the broker.
-type Service struct {
+type orders struct {
 	// orderStorage persists and retrieves Order aggregates.
-	orderStorage orderStorage.OrderRepository
+	orderStorage repository.Orders
 
 	// outboxStorage enqueues events in the transactional outbox.
-	outboxStorage outboxStorage.OutboxRepository
+	outboxStorage repository.Outbox
 
 	// pool owns the transaction that spans the order write and outbox enqueue.
 	pool *pgxpool.Pool
@@ -36,15 +33,15 @@ type Service struct {
 	logger *slog.Logger
 }
 
-// NewService wires the order service with its dependencies.
-func NewService(
-	orderStorage orderStorage.OrderRepository,
-	outboxStorage outboxStorage.OutboxRepository,
+// NewOrders wires the order service with its dependencies.
+func NewOrders(
+	orderStorage repository.Orders,
+	outboxStorage repository.Outbox,
 	pool *pgxpool.Pool,
 	eventBuilder *event.Builder,
 	logger *slog.Logger,
-) *Service {
-	return &Service{
+) Orders {
+	return &orders{
 		orderStorage:  orderStorage,
 		outboxStorage: outboxStorage,
 		pool:          pool,
@@ -55,16 +52,16 @@ func NewService(
 
 // Create validates the request, persists a new order, and publishes an
 // orders.created event. The order is returned on success.
-func (s *Service) Create(ctx context.Context, req *order.CreateRequest) (*order.Order, error) {
+func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain.Order, error) {
 	if err := req.Validate(); err != nil {
 		s.logger.DebugContext(ctx, "order create: validation failed",
 			"user_id", req.UserID, "err", err)
 		return nil, err
 	}
 
-	o := order.New(req.UserID, req.Amount)
+	o := domain.New(req.UserID, req.Amount)
 
-	envelope, err := s.eventBuilder.Build(order.TopicCreated, order.TopicCreatedVersion, order.NewOrderCreated(o))
+	envelope, err := s.eventBuilder.Build(domain.TopicCreated, domain.TopicCreatedVersion, domain.NewOrderCreated(o))
 	if err != nil {
 		return nil, fmt.Errorf("build order created event: %w", err)
 	}
@@ -74,7 +71,7 @@ func (s *Service) Create(ctx context.Context, req *order.CreateRequest) (*order.
 		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
 
-	outboxEvent := outbox.New(o.ID, order.TopicCreated, payload)
+	outboxEvent := domain.NewOutboxEvent(o.ID, domain.TopicCreated, payload)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

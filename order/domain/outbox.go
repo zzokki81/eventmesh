@@ -1,4 +1,4 @@
-package outbox
+package domain
 
 import (
 	"time"
@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Event is a row in the outbox waiting to be relayed to the broker.
-type Event struct {
+// OutboxEvent is a row in the outbox waiting to be relayed to the broker.
+type OutboxEvent struct {
 	// ID uniquely identifies this outbox row and matches the envelope ID
 	// it carries, so the broker can dedupe redeliveries by message id.
 	ID uuid.UUID
@@ -29,7 +29,7 @@ type Event struct {
 	// Status reflects the row's lifecycle: pending until the relay
 	// publishes it, published on success, or dead after attempts are
 	// exhausted and operator review is required.
-	Status Status
+	Status OutboxStatus
 
 	// AttemptCount records how many times the relay has tried to publish
 	// this event. It drives retry backoff and the transition to dead.
@@ -44,16 +44,17 @@ type Event struct {
 	ProcessedAt *time.Time
 }
 
-// New builds a new outbox Event ready for insertion. The event starts in
-// pending status with zero attempts and a fresh UTC creation timestamp;
-// the relay updates Status, AttemptCount, and ProcessedAt as it progresses.
-func New(aggregateID uuid.UUID, eventType string, payload []byte) *Event {
-	return &Event{
+// NewOutboxEvent builds a new outbox event ready for insertion. The event
+// starts in pending status with zero attempts and a fresh UTC creation
+// timestamp; the relay updates Status, AttemptCount, and ProcessedAt as
+// it progresses.
+func NewOutboxEvent(aggregateID uuid.UUID, eventType string, payload []byte) *OutboxEvent {
+	return &OutboxEvent{
 		ID:           uuid.New(),
 		AggregateID:  aggregateID,
 		Type:         eventType,
 		Payload:      payload,
-		Status:       StatusPending,
+		Status:       OutboxStatusPending,
 		AttemptCount: 0,
 		CreatedAt:    time.Now().UTC(),
 	}
