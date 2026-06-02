@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
-	"github.com/zzokki81/eventmesh/order/entities/order"
+	"github.com/zzokki81/eventmesh/order/domain"
 )
 
 // OrderResponse is the HTTP response body for order resources.
@@ -23,7 +23,7 @@ type OrderResponse struct {
 	Amount decimal.Decimal `json:"amount"`
 
 	// Status is the current order status.
-	Status order.Status `json:"status"`
+	Status domain.OrderStatus `json:"status"`
 
 	// CreatedAt is the timestamp when the order was created.
 	CreatedAt time.Time `json:"created_at"`
@@ -33,7 +33,7 @@ type OrderResponse struct {
 }
 
 // OrderResponseFrom projects an Order into the response payload.
-func OrderResponseFrom(o *order.Order) OrderResponse {
+func OrderResponseFrom(o *domain.Order) OrderResponse {
 	return OrderResponse{
 		ID:        o.ID,
 		UserID:    o.UserID,

@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/lmittmann/tint"
-
-	"github.com/zzokki81/eventmesh/order/config"
 )
 
 // New creates a new slog.Logger configured according to cfg.
 // It returns an error if the configuration values cannot be translated
 // into a valid slog handler (e.g. unknown level or format).
-func New(cfg config.LoggerConfig) (*slog.Logger, error) {
+func New(cfg Config) (*slog.Logger, error) {
 	level, err := parseLevel(cfg.Level)
 	if err != nil {
 		return nil, err
@@ -40,15 +38,15 @@ func New(cfg config.LoggerConfig) (*slog.Logger, error) {
 }
 
 // parseLevel converts a LogLevel into a slog.Level.
-func parseLevel(l config.LogLevel) (slog.Level, error) {
+func parseLevel(l Level) (slog.Level, error) {
 	switch l {
-	case config.LogLevelDebug:
+	case LevelDebug:
 		return slog.LevelDebug, nil
-	case config.LogLevelInfo:
+	case LevelInfo:
 		return slog.LevelInfo, nil
-	case config.LogLevelError:
+	case LevelError:
 		return slog.LevelError, nil
-	case config.LogLevelWarn:
+	case LevelWarn:
 		return slog.LevelWarn, nil
 	default:
 		return 0, fmt.Errorf("unknown log level %q", l)
@@ -56,12 +54,12 @@ func parseLevel(l config.LogLevel) (slog.Level, error) {
 }
 
 // parseOutput returns the io.Writer matching the configured output destination.
-func parseOutput(o config.LogOutput) (io.Writer, error) {
-	if o == config.LogOutputStderr {
+func parseOutput(o Output) (io.Writer, error) {
+	if o == OutputStderr {
 		return os.Stderr, nil
 	}
 
-	if o == config.LogOutputStdout {
+	if o == OutputStdout {
 		return os.Stdout, nil
 	}
 
@@ -69,13 +67,13 @@ func parseOutput(o config.LogOutput) (io.Writer, error) {
 }
 
 // buildHandler constructs a slog.Handler in the requested format.
-func buildHandler(format config.LogFormat, w io.Writer, opts *slog.HandlerOptions) (slog.Handler, error) {
+func buildHandler(format Format, w io.Writer, opts *slog.HandlerOptions) (slog.Handler, error) {
 	switch format {
-	case config.LogFormatJSON:
+	case FormatJSON:
 		return slog.NewJSONHandler(w, opts), nil
-	case config.LogFormatText:
+	case FormatText:
 		return slog.NewTextHandler(w, opts), nil
-	case config.LogFormatPretty:
+	case FormatPretty:
 		return tint.NewHandler(w, &tint.Options{
 			Level:      opts.Level,
 			AddSource:  opts.AddSource,

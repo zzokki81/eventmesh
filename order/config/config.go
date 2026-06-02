@@ -8,6 +8,11 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
+
+	"github.com/zzokki81/eventmesh/pkg/logger"
+
+	natspkg "github.com/zzokki81/eventmesh/pkg/nats"
+	pgpkg "github.com/zzokki81/eventmesh/pkg/postgres"
 )
 
 // Config aggregates all application configuration sections.
@@ -16,10 +21,10 @@ type Config struct {
 	HTTP HTTPConfig
 
 	// NATS and JetStream messaging configuration.
-	NATS NATSConfig
+	NATS natspkg.Config
 
 	// PostgreSQL database configuration.
-	Postgres PostgresConfig
+	Postgres pgpkg.Config
 
 	// Redis client configuration.
 	Redis RedisConfig
@@ -28,7 +33,7 @@ type Config struct {
 	Relay RelayConfig
 
 	// Logger configuration.
-	Logger LoggerConfig
+	Logger logger.Config
 }
 
 // Load reads configuration from environment variables and returns a Config struct.

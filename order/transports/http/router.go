@@ -7,16 +7,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
 
+	"github.com/zzokki81/eventmesh/order/service"
 	"github.com/zzokki81/eventmesh/order/transports/http/handlers"
 	"github.com/zzokki81/eventmesh/order/transports/http/middlewares"
-
-	ordersvc "github.com/zzokki81/eventmesh/order/services/order"
 )
 
 // RouterConfig groups the dependencies required to build the HTTP router.
 type RouterConfig struct {
 	// OrderService backs the /orders endpoints.
-	OrderService ordersvc.Service
+	OrderService service.Orders
 
 	// Db is used by the readiness probe to verify database connectivity.
 	Db *pgxpool.Pool

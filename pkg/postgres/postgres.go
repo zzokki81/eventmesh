@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/zzokki81/eventmesh/order/config"
 )
 
 // NewPool constructs a new pgxpool.Pool configured from cfg.
@@ -15,7 +13,7 @@ import (
 //
 // The caller is responsible for calling Close() on the returned pool
 // when the application shuts down.
-func NewPool(ctx context.Context, cfg config.PostgresConfig) (*pgxpool.Pool, error) {
+func NewPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres config: %w", err)

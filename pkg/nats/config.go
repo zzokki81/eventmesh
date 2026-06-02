@@ -1,9 +1,9 @@
-package config
+package nats
 
 import "time"
 
-// NATSConfig represents the configuration for NATS messaging system.
-type NATSConfig struct {
+// Config holds all settings required to establish and maintain a NATS connection.
+type Config struct {
 	// URL is the connection string for the NATS server.
 	URL string `env:"NATS_URL" validate:"required,url"`
 

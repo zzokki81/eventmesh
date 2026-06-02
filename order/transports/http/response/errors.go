@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/zzokki81/eventmesh/order/errs"
+	"github.com/zzokki81/eventmesh/order/domain"
 )
 
 // ErrInvalidJSON is returned when a request body cannot be parsed as JSON.
@@ -53,25 +53,25 @@ func mapError(err error) (int, ErrorBody) {
 			Message: err.Error(),
 		}
 
-	case errors.Is(err, errs.ErrOrderNotFound):
+	case errors.Is(err, domain.ErrOrderNotFound):
 		return http.StatusNotFound, ErrorBody{
 			Code:    "ORDER_NOT_FOUND",
 			Message: err.Error(),
 		}
 
-	case errors.Is(err, errs.ErrInvalidOrderUserID):
+	case errors.Is(err, domain.ErrInvalidOrderUserID):
 		return http.StatusBadRequest, ErrorBody{
 			Code:    "INVALID_ORDER_USER_ID",
 			Message: err.Error(),
 		}
 
-	case errors.Is(err, errs.ErrInvalidOrderAmount):
+	case errors.Is(err, domain.ErrInvalidOrderAmount):
 		return http.StatusBadRequest, ErrorBody{
 			Code:    "INVALID_ORDER_AMOUNT",
 			Message: err.Error(),
 		}
 
-	case errors.Is(err, errs.ErrInvalidOrderStatus):
+	case errors.Is(err, domain.ErrInvalidOrderStatus):
 		return http.StatusBadRequest, ErrorBody{
 			Code:    "INVALID_ORDER_STATUS",
 			Message: err.Error(),

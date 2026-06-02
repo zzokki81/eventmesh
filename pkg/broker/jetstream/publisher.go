@@ -1,4 +1,4 @@
-// Package nats provides JetStream-backed implementations of the broker
+// Package jetstream provides JetStream-backed implementations of the broker
 // Publisher and Subscriber contracts.
 package jetstream
 
@@ -24,7 +24,7 @@ func NewPublisher(js jetstream.JetStream) broker.Publisher {
 // Publish sends pre-serialized data to subject and waits for the server ack.
 func (p *publisher) Publish(ctx context.Context, subject string, data []byte) error {
 	if _, err := p.js.Publish(ctx, subject, data); err != nil {
-		return fmt.Errorf("publish raw to %s: %w", subject, err)
+		return fmt.Errorf("publish to %s: %w", subject, err)
 	}
 	return nil
 }

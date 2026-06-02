@@ -1,10 +1,8 @@
-package order
+package domain
 
 import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-
-	"github.com/zzokki81/eventmesh/order/errs"
 )
 
 // CreateRequest is the parsed input for creating a new order.
@@ -17,13 +15,13 @@ type CreateRequest struct {
 }
 
 // Validate enforces domain invariants on the request.
-// Returns errs.ErrInvalidOrderUserID or errs.ErrInvalidOrderAmount.
+// Returns domain.ErrInvalidOrderUserID or domain.ErrInvalidOrderAmount.
 func (c *CreateRequest) Validate() error {
 	if c.UserID == uuid.Nil {
-		return errs.ErrInvalidOrderUserID
+		return ErrInvalidOrderUserID
 	}
 	if c.Amount.LessThanOrEqual(decimal.Zero) {
-		return errs.ErrInvalidOrderAmount
+		return ErrInvalidOrderAmount
 	}
 	return nil
 }
@@ -33,12 +31,12 @@ func (c *CreateRequest) Validate() error {
 func CreateRequestFrom(userID, amount string) (*CreateRequest, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return nil, errs.ErrInvalidOrderUserID
+		return nil, ErrInvalidOrderUserID
 	}
 
 	amt, err := decimal.NewFromString(amount)
 	if err != nil {
-		return nil, errs.ErrInvalidOrderAmount
+		return nil, ErrInvalidOrderAmount
 	}
 
 	return &CreateRequest{UserID: uid, Amount: amt}, nil

@@ -8,19 +8,18 @@ import (
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/order/config"
-	"github.com/zzokki81/eventmesh/order/entities/order"
+	"github.com/zzokki81/eventmesh/order/domain"
 	"github.com/zzokki81/eventmesh/order/relay"
 	"github.com/zzokki81/eventmesh/order/transports/http"
 	"github.com/zzokki81/eventmesh/pkg/broker/handlers/eventlog"
 	"github.com/zzokki81/eventmesh/pkg/event"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
-	"github.com/zzokki81/eventmesh/pkg/postgres"
 
-	orderSvc "github.com/zzokki81/eventmesh/order/services/order/order"
-	orderStorage "github.com/zzokki81/eventmesh/order/storage/orders/postgres"
-	outboxStorage "github.com/zzokki81/eventmesh/order/storage/outbox/postgres"
-	brokerNats "github.com/zzokki81/eventmesh/pkg/broker/jetstream"
+	orderpg "github.com/zzokki81/eventmesh/order/repository/postgres"
+	orderSvc "github.com/zzokki81/eventmesh/order/service"
+	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
+	pgpool "github.com/zzokki81/eventmesh/pkg/postgres"
 )
 
 // Run bootstraps the application: loads config, initializes infrastructure,
@@ -30,25 +29,22 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-
 	lg, err := logger.New(cfg.Logger)
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
-
 	lg = lg.With(
 		"service", ServiceName,
 		"version", Version,
 		"commit", CommitHash,
 	)
 	slog.SetDefault(lg)
-
 	lg.Info("starting eventmesh", "http_addr", cfg.HTTP.Addr)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := postgres.NewPool(ctx, cfg.Postgres)
+	pool, err := pgpool.NewPool(ctx, cfg.Postgres)
 	if err != nil {
 		return fmt.Errorf("init postgres: %w", err)
 	}
@@ -75,11 +71,13 @@ func Run() error {
 		return fmt.Errorf("setup stream: %w", err)
 	}
 
-	pub := brokerNats.NewPublisher(js)
+	pub := jetstream.NewPublisher(js)
 	eventBuilder := event.NewBuilder(ServiceName)
-	orderRepo := orderStorage.NewStorage(pool)
-	outboxRepo := outboxStorage.NewStorage()
-	orderService := orderSvc.NewService(orderRepo, outboxRepo, pool, eventBuilder, lg)
+
+	orderRepo := orderpg.NewOrders(pool)
+	outboxRepo := orderpg.NewOutbox()
+
+	orderService := orderSvc.NewOrders(orderRepo, outboxRepo, pool, eventBuilder, lg)
 
 	// Outbox relay: drains pending outbox rows and publishes them to the broker.
 	relayProc := relay.New(pool, outboxRepo, pub, cfg.Relay, lg)
@@ -89,14 +87,13 @@ func Run() error {
 		}
 	}()
 
-	sub := brokerNats.NewSubscriber(js, brokerNats.SubscriberConfig{
+	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
 		ConsumerName: "orders-logger",
-		Subject:      order.TopicCreated,
+		Subject:      domain.TopicCreated,
 		AckWait:      cfg.NATS.AckWait,
 		MaxDeliver:   cfg.NATS.MaxDeliver,
 	}, eventlog.New(lg), lg)
-
 	go func() {
 		if err := sub.Run(ctx); err != nil {
 			lg.Error("subscriber error", "err", err)
@@ -112,7 +109,6 @@ func Run() error {
 	}
 	router := http.NewRouter(rc)
 	server := http.NewServer(cfg.HTTP, router, lg)
-
 	if err := server.Run(ctx); err != nil {
 		return fmt.Errorf("http server: %w", err)
 	}

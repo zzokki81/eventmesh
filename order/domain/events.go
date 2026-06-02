@@ -1,4 +1,4 @@
-package order
+package domain
 
 import (
 	"time"
@@ -33,7 +33,7 @@ type OrderBase struct {
 	Amount decimal.Decimal `json:"amount"`
 
 	// Status is the order status captured at the moment of emission.
-	Status Status `json:"status"`
+	Status OrderStatus `json:"status"`
 
 	// CreatedAt is the UTC timestamp of order creation.
 	CreatedAt time.Time `json:"created_at"`
