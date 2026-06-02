@@ -8,7 +8,6 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-
 )
 
 // jetStreamInfoTimeout caps how long we wait when verifying JetStream
