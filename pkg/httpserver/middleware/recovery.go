@@ -1,5 +1,5 @@
-// Package middlewares contains HTTP middleware functions.
-package middlewares
+// Package middleware contains shared HTTP middleware functions.
+package middleware
 
 import (
 	"log/slog"

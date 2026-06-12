@@ -53,12 +53,3 @@ func (r *Readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ready"))
 }
-
-// Health responds with 200 OK to indicate the process is alive.
-// Used as the Kubernetes liveness probe target. Intentionally trivial:
-// liveness should fail only when the process itself is unresponsive,
-// not when a downstream dependency is unavailable.
-func Health(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
-}

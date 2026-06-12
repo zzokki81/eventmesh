@@ -1,5 +1,5 @@
-// Package http provides the HTTP transport layer for the application.
-package http
+// Package httpserver provides a lifecycle-managed HTTP server with graceful shutdown.
+package httpserver
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-
-	"github.com/zzokki81/eventmesh/order/config"
 )
 
 // Server wraps the standard http.Server with lifecycle management
@@ -16,11 +14,11 @@ import (
 type Server struct {
 	srv    *http.Server
 	logger *slog.Logger
-	cfg    config.HTTPConfig
+	cfg    Config
 }
 
-// NewServer constructs a new HTTP server with the given handler and configuration.
-func NewServer(cfg config.HTTPConfig, handler http.Handler, logger *slog.Logger) *Server {
+// New constructs a new HTTP server with the given handler and configuration.
+func New(cfg Config, handler http.Handler, logger *slog.Logger) *Server {
 	return &Server{
 		srv: &http.Server{
 			Addr:              cfg.Addr,
@@ -64,7 +62,7 @@ func (s *Server) Run(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := s.srv.Shutdown(shutdownCtx); err != nil { // //nolint:contextcheck
+	if err := s.srv.Shutdown(shutdownCtx); err != nil { //nolint:contextcheck
 		return fmt.Errorf("http server shutdown: %w", err)
 	}
 

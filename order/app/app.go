@@ -12,13 +12,14 @@ import (
 	"github.com/zzokki81/eventmesh/order/relay"
 	"github.com/zzokki81/eventmesh/order/transports/http"
 	"github.com/zzokki81/eventmesh/pkg/broker/handlers/eventlog"
+	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 	"github.com/zzokki81/eventmesh/pkg/event"
+	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
 
 	orderpg "github.com/zzokki81/eventmesh/order/repository/postgres"
 	orderSvc "github.com/zzokki81/eventmesh/order/service"
-	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 	pgpool "github.com/zzokki81/eventmesh/pkg/postgres"
 )
 
@@ -104,11 +105,11 @@ func Run() error {
 		Logger:       lg,
 		Db:           pool,
 		Nats:         nc,
-		Info:         toHandlerInfo(CurrentInfo()),
+		Info:         CurrentInfo(),
 		OrderService: orderService,
 	}
 	router := http.NewRouter(rc)
-	server := http.NewServer(cfg.HTTP, router, lg)
+	server := httpserver.New(cfg.HTTP, router, lg)
 	if err := server.Run(ctx); err != nil {
 		return fmt.Errorf("http server: %w", err)
 	}

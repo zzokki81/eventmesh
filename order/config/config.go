@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 
+	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 
 	natspkg "github.com/zzokki81/eventmesh/pkg/nats"
@@ -18,7 +19,7 @@ import (
 // Config aggregates all application configuration sections.
 type Config struct {
 	// HTTP server configuration.
-	HTTP HTTPConfig
+	HTTP httpserver.Config
 
 	// NATS and JetStream messaging configuration.
 	NATS natspkg.Config
