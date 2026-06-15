@@ -35,7 +35,7 @@ type Config struct {
 // It uses the env package to parse environment variables into the Config struct fields.
 // If parsing fails, it returns an error with details about the failure.
 func Load() (*Config, error) {
-	_ = godotenv.Load()
+	_ = godotenv.Load("notifier/.env")
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse environment variables: %w", err)
