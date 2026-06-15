@@ -73,13 +73,13 @@ logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
 
 migrate-up:
-	migrate -path order/migrations -database "$(DATABASE_URL)" up
+	@set -a && . order/.env && set +a && migrate -path order/migrations -database "$$DATABASE_URL" up
 
 migrate-down:
-	migrate -path order/migrations -database "$(DATABASE_URL)" down 1
+	@set -a && . order/.env && set +a && migrate -path order/migrations -database "$$DATABASE_URL" down 1
 
 migrate-status:
-	migrate -path order/migrations -database "$(DATABASE_URL)" version
+	@set -a && . order/.env && set +a && migrate -path order/migrations -database "$$DATABASE_URL" version
 
 migrate-new:
 	@if [ -z "$(name)" ]; then echo "Error: name required. Usage: make migrate-new name=create_outbox"; exit 1; fi
