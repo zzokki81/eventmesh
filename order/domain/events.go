@@ -29,6 +29,10 @@ type OrderBase struct {
 	// UserID identifies the user that placed the order.
 	UserID uuid.UUID `json:"user_id"`
 
+	// UserEmail is the email address captured at order creation time.
+	// Denormalized into the event so consumers do not need to call a user service.
+	UserEmail string `json:"user_email"`
+
 	// Amount is the order total.
 	Amount decimal.Decimal `json:"amount"`
 
@@ -44,6 +48,7 @@ func OrderBaseFrom(o *Order) OrderBase {
 	return OrderBase{
 		ID:        o.ID,
 		UserID:    o.UserID,
+		UserEmail: o.UserEmail,
 		Amount:    o.Amount,
 		Status:    o.Status,
 		CreatedAt: o.CreatedAt,

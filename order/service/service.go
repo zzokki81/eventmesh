@@ -53,13 +53,7 @@ func NewOrders(
 // Create validates the request, persists a new order, and publishes an
 // orders.created event. The order is returned on success.
 func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain.Order, error) {
-	if err := req.Validate(); err != nil {
-		s.logger.DebugContext(ctx, "order create: validation failed",
-			"user_id", req.UserID, "err", err)
-		return nil, err
-	}
-
-	o := domain.New(req.UserID, req.Amount)
+	o := domain.New(req.UserID, req.UserEmail, req.Amount)
 
 	envelope, err := s.eventBuilder.Build(domain.TopicCreated, domain.TopicCreatedVersion, domain.NewOrderCreated(o))
 	if err != nil {

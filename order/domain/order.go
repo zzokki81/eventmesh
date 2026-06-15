@@ -15,6 +15,9 @@ type Order struct {
 	// UserID identifies the user who placed the order.
 	UserID uuid.UUID
 
+	// UserEmail is the email address of the user
+	UserEmail string
+
 	// Amount is the order total.
 	Amount decimal.Decimal
 
@@ -31,11 +34,12 @@ type Order struct {
 // New constructs a new Order with a generated ID, current timestamps,
 // and Status set to OrderStatusPending. The caller is responsible for
 // validating inputs before invoking New.
-func New(userID uuid.UUID, amount decimal.Decimal) *Order {
+func New(userID uuid.UUID, userEmail string, amount decimal.Decimal) *Order {
 	now := time.Now().UTC()
 	return &Order{
 		ID:        uuid.New(),
 		UserID:    userID,
+		UserEmail: userEmail,
 		Amount:    amount,
 		Status:    OrderStatusPending,
 		CreatedAt: now,
