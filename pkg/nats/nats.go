@@ -8,6 +8,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+
+	"github.com/zzokki81/eventmesh/pkg/event"
 )
 
 // jetStreamInfoTimeout caps how long we wait when verifying JetStream
@@ -64,9 +66,10 @@ func NewJetStream(ctx context.Context, conn *nats.Conn) (jetstream.JetStream, er
 func SetupStream(ctx context.Context, js jetstream.JetStream, name string) error {
 	_, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      name,
-		Subjects:  []string{"orders.>"},
+		Subjects:  []string{event.SubjectOrdersAll},
 		Storage:   jetstream.FileStorage,
-		Retention: jetstream.WorkQueuePolicy,
+		Retention: jetstream.LimitsPolicy,
+		MaxAge:    7 * 24 * time.Hour,
 	})
 	if err != nil {
 		return fmt.Errorf("setup stream %q: %w", name, err)

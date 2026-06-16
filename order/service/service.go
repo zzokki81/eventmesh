@@ -55,7 +55,7 @@ func NewOrders(
 func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain.Order, error) {
 	o := domain.New(req.UserID, req.UserEmail, req.Amount)
 
-	envelope, err := s.eventBuilder.Build(domain.TopicCreated, domain.TopicCreatedVersion, domain.NewOrderCreated(o))
+	envelope, err := s.eventBuilder.Build(event.SubjectOrderCreated, event.VersionOrderCreated, domain.NewOrderCreated(o))
 	if err != nil {
 		return nil, fmt.Errorf("build order created event: %w", err)
 	}
@@ -65,7 +65,7 @@ func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain
 		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
 
-	outboxEvent := domain.NewOutboxEvent(o.ID, domain.TopicCreated, payload)
+	outboxEvent := domain.NewOutboxEvent(o.ID, event.SubjectOrderCreated, payload)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

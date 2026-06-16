@@ -7,17 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	// TopicCreated is the NATS subject for order creation events. The envelope's
-	// Type field carries the same value, so a single constant binds routing and
-	// schema identity for producers and consumers alike.
-	TopicCreated = "orders.created"
-
-	// TopicCreatedVersion identifies the OrderCreated schema. Bump it on any
-	// breaking change so consumers can branch on payload shape.
-	TopicCreatedVersion = "1"
-)
-
 // OrderBase is the public projection of an Order embedded in every order event.
 // Its fields form the stable contract event consumers observe, decoupled from
 // the internal Order representation so the two can evolve independently.
