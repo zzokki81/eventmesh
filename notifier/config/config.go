@@ -48,7 +48,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-
 func validate(cfg *Config) error {
 	v := validator.New(validator.WithRequiredStructEnabled())
 	if err := v.Struct(cfg); err != nil {
