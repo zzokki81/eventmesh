@@ -2,9 +2,12 @@ package response
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/zzokki81/eventmesh/order/domain"
 )
 
@@ -20,10 +23,24 @@ type ErrorBody struct {
 	Message string `json:"message"`
 }
 
-// errorResponse is the JSON envelope used for error responses.
-type errorResponse struct {
-	// Error carries the error details for the client.
-	Error ErrorBody `json:"error"`
+// WriteValidationError writes a 400 Bad Request response with field-level
+// details extracted from a validator.ValidationErrors value.
+func WriteValidationError(w http.ResponseWriter, r *http.Request, err error) {
+	var ve validator.ValidationErrors
+	if !errors.As(err, &ve) {
+		WriteError(w, r, ErrInvalidJSON)
+		return
+	}
+
+	fields := make([]string, 0, len(ve))
+	for _, fe := range ve {
+		fields = append(fields, fmt.Sprintf("%s: must satisfy '%s'", fe.Field(), fe.Tag()))
+	}
+
+	WriteJSON(w, r, http.StatusBadRequest, ErrorBody{
+		Code:    "INVALID_REQUEST",
+		Message: strings.Join(fields, "; "),
+	})
 }
 
 // WriteError serializes err into a JSON error response with an appropriate
@@ -40,7 +57,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		)
 	}
 
-	WriteJSON(w, r, status, errorResponse{Error: body})
+	WriteJSON(w, r, status, body)
 }
 
 // mapError translates a domain or transport error into the HTTP status

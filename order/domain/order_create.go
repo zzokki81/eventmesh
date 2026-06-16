@@ -10,25 +10,16 @@ type CreateRequest struct {
 	// UserID identifies the user placing the order.
 	UserID uuid.UUID
 
+	// UserEmail is the email address of the user placing the order.
+	UserEmail string
+
 	// Amount is the order total; must be greater than zero.
 	Amount decimal.Decimal
 }
 
-// Validate enforces domain invariants on the request.
-// Returns domain.ErrInvalidOrderUserID or domain.ErrInvalidOrderAmount.
-func (c *CreateRequest) Validate() error {
-	if c.UserID == uuid.Nil {
-		return ErrInvalidOrderUserID
-	}
-	if c.Amount.LessThanOrEqual(decimal.Zero) {
-		return ErrInvalidOrderAmount
-	}
-	return nil
-}
-
-// CreateRequestFrom parses raw string inputs into a CreateRequest.
-// Format errors map to the corresponding invalid-field sentinels.
-func CreateRequestFrom(userID, amount string) (*CreateRequest, error) {
+// CreateRequestFrom parses and validates raw string inputs into a CreateRequest.
+// Returns a domain error sentinel on any parse or invariant failure.
+func CreateRequestFrom(userID, userEmail, amount string) (*CreateRequest, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, ErrInvalidOrderUserID
@@ -39,5 +30,9 @@ func CreateRequestFrom(userID, amount string) (*CreateRequest, error) {
 		return nil, ErrInvalidOrderAmount
 	}
 
-	return &CreateRequest{UserID: uid, Amount: amt}, nil
+	if amt.LessThanOrEqual(decimal.Zero) {
+		return nil, ErrInvalidOrderAmount
+	}
+
+	return &CreateRequest{UserID: uid, UserEmail: userEmail, Amount: amt}, nil
 }

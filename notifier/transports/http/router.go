@@ -6,18 +6,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
+
 	"github.com/zzokki81/eventmesh/pkg/httpserver/handler"
 	"github.com/zzokki81/eventmesh/pkg/httpserver/middleware"
 
-	"github.com/zzokki81/eventmesh/order/service"
-	"github.com/zzokki81/eventmesh/order/transports/http/handlers"
+	"github.com/zzokki81/eventmesh/notifier/transports/http/handlers"
 )
 
 // RouterConfig groups the dependencies required to build the HTTP router.
 type RouterConfig struct {
-	// OrderService backs the /orders endpoints.
-	OrderService service.Orders
-
 	// Db is used by the readiness probe to verify database connectivity.
 	Db *pgxpool.Pool
 
@@ -38,12 +35,10 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	readiness := handlers.NewReadiness(cfg.Db, cfg.Nats, cfg.Logger)
 	infoHandler := handler.NewInfo(cfg.Info, cfg.Logger)
-	orderHandler := handlers.NewOrderHandler(cfg.OrderService)
 
 	mux.HandleFunc("GET /healthz", handler.Health)
 	mux.Handle("GET /readyz", readiness)
 	mux.Handle("GET /info", infoHandler)
-	mux.HandleFunc("POST /orders", orderHandler.Create)
 
 	var h http.Handler = mux
 	// The order of middleware is important: each line wraps the previous handler,

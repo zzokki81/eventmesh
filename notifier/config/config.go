@@ -27,12 +27,6 @@ type Config struct {
 	// PostgreSQL database configuration.
 	Postgres pgpkg.Config
 
-	// Redis client configuration.
-	Redis RedisConfig
-
-	// Relay configuration for the relay component.
-	Relay RelayConfig
-
 	// Logger configuration.
 	Logger logger.Config
 }
@@ -41,7 +35,7 @@ type Config struct {
 // It uses the env package to parse environment variables into the Config struct fields.
 // If parsing fails, it returns an error with details about the failure.
 func Load() (*Config, error) {
-	_ = godotenv.Load("order/.env")
+	_ = godotenv.Load("notifier/.env")
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse environment variables: %w", err)

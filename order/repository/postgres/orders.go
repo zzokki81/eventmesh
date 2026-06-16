@@ -37,11 +37,12 @@ func NewOrders(pool *pgxpool.Pool) *OrdersRepository {
 // The transaction must be committed for the order to be persisted.
 // Returns an error if the insert fails; the caller is responsible for rolling back the transaction.
 func (s *OrdersRepository) Create(ctx context.Context, tx pgx.Tx, o *domain.Order) error {
-	q := `INSERT INTO orders (id, user_id, amount, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+	q := `INSERT INTO orders (id, user_id, user_email, amount, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := tx.Exec(ctx, q,
 		o.ID,
 		o.UserID,
+		o.UserEmail,
 		o.Amount,
 		o.Status,
 		o.CreatedAt,
@@ -57,12 +58,13 @@ func (s *OrdersRepository) Create(ctx context.Context, tx pgx.Tx, o *domain.Orde
 // Returns domain.ErrOrderNotFound if no order matches.
 func (s *OrdersRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
 	var o domain.Order
-	q := `SELECT id, user_id, amount, status, created_at, updated_at
+	q := `SELECT id, user_id, user_email, amount, status, created_at, updated_at
 		  FROM orders
 		  WHERE id = $1`
 	err := s.pool.QueryRow(ctx, q, id).Scan(
 		&o.ID,
 		&o.UserID,
+		&o.UserEmail,
 		&o.Amount,
 		&o.Status,
 		&o.CreatedAt,

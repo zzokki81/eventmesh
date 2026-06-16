@@ -12,7 +12,7 @@ var (
 	BuildDate  = "unknown"
 )
 
-const ServiceName = "order"
+const ServiceName = "notifier"
 
 func CurrentInfo() handler.InfoData {
 	return handler.InfoData{

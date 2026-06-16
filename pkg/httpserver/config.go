@@ -1,10 +1,12 @@
-package config
+package httpserver
 
 import "time"
 
-type HTTPConfig struct {
-	// Addr is the HTTP server listen address.
-	Addr string `env:"HTTP_ADDR" envDefault:":8080" validate:"required,hostname_port"`
+// Config holds the settings required to run an HTTP server.
+type Config struct {
+	// Addr is the HTTP server listen address. Required with no default: each
+	// service must set its own port explicitly to avoid colliding on a shared one.
+	Addr string `env:"HTTP_ADDR" validate:"required,hostname_port"`
 
 	// ReadTimeout is the maximum duration for reading the entire request.
 	ReadTimeout time.Duration `env:"HTTP_READ_TIMEOUT" envDefault:"10s" validate:"min=1s"`

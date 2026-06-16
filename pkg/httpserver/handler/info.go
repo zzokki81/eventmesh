@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"encoding/json"
@@ -7,7 +7,6 @@ import (
 )
 
 // InfoData represents service identification and build metadata.
-// Defined here (not imported from app) to avoid an import cycle.
 type InfoData struct {
 	Service   string `json:"service"`
 	Version   string `json:"version"`

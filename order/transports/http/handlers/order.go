@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/zzokki81/eventmesh/order/domain"
 	"github.com/zzokki81/eventmesh/order/transports/http/dto"
 	"github.com/zzokki81/eventmesh/order/transports/http/response"
@@ -13,13 +14,16 @@ import (
 
 // OrderHandler exposes order resources over HTTP.
 type OrderHandler struct {
-	// service performs the order use cases.
-	service orderSvc.Orders
+	service  orderSvc.Orders
+	validate *validator.Validate
 }
 
 // NewOrderHandler constructs an OrderHandler backed by the given service.
 func NewOrderHandler(s orderSvc.Orders) *OrderHandler {
-	return &OrderHandler{service: s}
+	return &OrderHandler{
+		service:  s,
+		validate: validator.New(),
+	}
 }
 
 // Create handles POST /orders. It decodes the request body, delegates to
@@ -31,7 +35,12 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := domain.CreateRequestFrom(d.UserID, d.Amount)
+	if err := h.validate.Struct(d); err != nil {
+		response.WriteValidationError(w, r, err)
+		return
+	}
+
+	req, err := domain.CreateRequestFrom(d.UserID, d.UserEmail, d.Amount)
 	if err != nil {
 		response.WriteError(w, r, err)
 		return
