@@ -42,7 +42,7 @@ func Run() error {
 	lg.Info("starting notifier", "http_addr", cfg.HTTP.Addr)
 
 	// --- Signal-aware root context ---
-	// Cancelled on SIGINT/SIGTERM; propagated to every long-running component
+	// Canceled on SIGINT/SIGTERM; propagated to every long-running component
 	// so they shut down together.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -71,7 +71,7 @@ func Run() error {
 
 	// --- Event subscriber ---
 	// Consumes orders.created and dispatches notifications. Runs in its own
-	// goroutine; drains in-flight messages when ctx is cancelled.
+	// goroutine; drains in-flight messages when ctx is canceled.
 	handler := handlers.NewOrderCreatedHandler(lg)
 	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
@@ -87,7 +87,7 @@ func Run() error {
 	}()
 
 	// --- HTTP server ---
-	// Serves health/readiness/info. Blocks until ctx is cancelled, then
+	// Serves health/readiness/info. Blocks until ctx is canceled, then
 	// gracefully shuts down, which keeps the process alive for the goroutines above.
 	rc := http.RouterConfig{
 		Logger: lg,
