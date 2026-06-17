@@ -8,10 +8,8 @@ import (
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/order/config"
-	"github.com/zzokki81/eventmesh/order/domain"
 	"github.com/zzokki81/eventmesh/order/relay"
 	"github.com/zzokki81/eventmesh/order/transports/http"
-	"github.com/zzokki81/eventmesh/pkg/broker/handlers/eventlog"
 	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 	"github.com/zzokki81/eventmesh/pkg/event"
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
@@ -85,19 +83,6 @@ func Run() error {
 	go func() {
 		if err := relayProc.Run(ctx); err != nil {
 			lg.Error("relay error", "err", err)
-		}
-	}()
-
-	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
-		StreamName:   cfg.NATS.StreamName,
-		ConsumerName: "orders-logger",
-		Subject:      domain.TopicCreated,
-		AckWait:      cfg.NATS.AckWait,
-		MaxDeliver:   cfg.NATS.MaxDeliver,
-	}, eventlog.New(lg), lg)
-	go func() {
-		if err := sub.Run(ctx); err != nil {
-			lg.Error("subscriber error", "err", err)
 		}
 	}()
 
