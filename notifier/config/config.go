@@ -11,9 +11,8 @@ import (
 
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
-
-	natspkg "github.com/zzokki81/eventmesh/pkg/nats"
-	pgpkg "github.com/zzokki81/eventmesh/pkg/postgres"
+	"github.com/zzokki81/eventmesh/pkg/nats"
+	"github.com/zzokki81/eventmesh/pkg/redis"
 )
 
 // Config aggregates all application configuration sections.
@@ -22,10 +21,13 @@ type Config struct {
 	HTTP httpserver.Config
 
 	// NATS and JetStream messaging configuration.
-	NATS natspkg.Config
+	NATS nats.Config
 
-	// PostgreSQL database configuration.
-	Postgres pgpkg.Config
+	// Redis configuration.
+	Redis redis.Config
+
+	// Dedup holds event-deduplication TTLs.
+	Dedup DedupConfig
 
 	// Logger configuration.
 	Logger logger.Config

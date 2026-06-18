@@ -1,9 +1,9 @@
-package config
+package redis
 
 import "time"
 
-// RedisConfig represents the configuration for Redis database connection.
-type RedisConfig struct {
+// Config represents the configuration for Redis database connection.
+type Config struct {
 	// Addr is the Redis server address in the format host:port.
 	Addr string `env:"REDIS_ADDR" validate:"required,hostname_port"`
 

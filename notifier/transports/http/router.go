@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/zzokki81/eventmesh/pkg/httpserver/handler"
 	"github.com/zzokki81/eventmesh/pkg/httpserver/middleware"
@@ -15,11 +15,11 @@ import (
 
 // RouterConfig groups the dependencies required to build the HTTP router.
 type RouterConfig struct {
-	// Db is used by the readiness probe to verify database connectivity.
-	Db *pgxpool.Pool
-
 	// Nats is used by the readiness probe to verify broker connectivity.
 	Nats *nats.Conn
+
+	// Redis is used by the readiness probe to verify cache connectivity.
+	Redis *redis.Client
 
 	// Logger is shared with middleware and handlers.
 	Logger *slog.Logger
@@ -33,7 +33,7 @@ type RouterConfig struct {
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
-	readiness := handlers.NewReadiness(cfg.Db, cfg.Nats, cfg.Logger)
+	readiness := handlers.NewReadiness(cfg.Nats, cfg.Redis, cfg.Logger)
 	infoHandler := handler.NewInfo(cfg.Info, cfg.Logger)
 
 	mux.HandleFunc("GET /healthz", handler.Health)
