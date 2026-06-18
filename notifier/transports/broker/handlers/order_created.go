@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,10 +11,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
+	"github.com/zzokki81/eventmesh/notifier/domain"
+	"github.com/zzokki81/eventmesh/notifier/service"
 	"github.com/zzokki81/eventmesh/pkg/event"
 )
 
-// orderCreatedPayload mirrors the orders.created event schema.
+// errMalformedPayload marks a permanently undecodable payload. It is the only
+// non-retryable error this handler produces; everything the service returns
+// (in-progress claims, dedup or send failures) is transient.
+var errMalformedPayload = errors.New("malformed payload")
+
+// orderCreatedPayload mirrors the orders.created event schema on the wire.
 // Defined locally to avoid cross-service import; must stay in sync with the producer.
 type orderCreatedPayload struct {
 	ID        uuid.UUID       `json:"id"`
@@ -24,33 +32,38 @@ type orderCreatedPayload struct {
 	CreatedAt time.Time       `json:"created_at"`
 }
 
-// OrderCreatedHandler processes orders.created events and dispatches notifications.
+// OrderCreatedHandler adapts orders.created broker messages to the notifier
+// service: it decodes the payload, delegates processing, and lets the subscriber
+// translate the returned error into ack/nak/term.
 type OrderCreatedHandler struct {
+	// Notifier service. Responsible for deduplicating orders and dispatching notifications.
+	notifier service.Notifier
+
+	// Logger. Used for logging events.
 	logger *slog.Logger
 }
 
-// NewOrderCreatedHandler returns an OrderCreatedHandler backed by logger.
-func NewOrderCreatedHandler(logger *slog.Logger) *OrderCreatedHandler {
-	return &OrderCreatedHandler{logger: logger}
+// NewOrderCreatedHandler returns an OrderCreatedHandler backed by logger and notifier.
+func NewOrderCreatedHandler(notifier service.Notifier, logger *slog.Logger) *OrderCreatedHandler {
+	return &OrderCreatedHandler{notifier: notifier, logger: logger}
 }
 
-// Handle decodes the orders.created payload and dispatches a notification.
-// Email delivery will replace the log statement once the email sender is wired in.
+// Handle decodes the orders.created payload and delegates to the service.
 func (h *OrderCreatedHandler) Handle(ctx context.Context, env *event.Envelope) error {
 	var payload orderCreatedPayload
 	if err := json.Unmarshal(env.Data, &payload); err != nil {
-		return fmt.Errorf("decode orders.created payload: %w", err)
+		return fmt.Errorf("%w: %w", errMalformedPayload, err)
 	}
 
-	h.logger.InfoContext(ctx, "order notification dispatched",
-		"event_id", env.ID,
-		"order_id", payload.ID,
-		"user_email", payload.UserEmail,
-		"amount", payload.Amount,
-	)
-
-	return nil
+	return h.notifier.ProcessOrderCreated(ctx, env.ID.String(), domain.OrderCreated{
+		OrderID:   payload.ID,
+		UserEmail: payload.UserEmail,
+		Amount:    payload.Amount,
+	})
 }
 
-// IsRetryable returns false — a malformed payload cannot be fixed by redelivery.
-func (h *OrderCreatedHandler) IsRetryable(error) bool { return false }
+// IsRetryable reports whether a handler error should trigger redelivery. Only a
+// malformed payload is permanent; transient failures are retried.
+func (h *OrderCreatedHandler) IsRetryable(err error) bool {
+	return !errors.Is(err, errMalformedPayload)
+}

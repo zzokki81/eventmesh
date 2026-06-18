@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/notifier/config"
+	"github.com/zzokki81/eventmesh/notifier/dedup"
+	"github.com/zzokki81/eventmesh/notifier/service"
 	"github.com/zzokki81/eventmesh/notifier/transports/broker/handlers"
 	"github.com/zzokki81/eventmesh/notifier/transports/http"
 	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
@@ -15,8 +17,7 @@ import (
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
-
-	pgpool "github.com/zzokki81/eventmesh/pkg/postgres"
+	"github.com/zzokki81/eventmesh/pkg/redis"
 )
 
 // Run bootstraps the notifier service: loads config, initializes infrastructure,
@@ -47,13 +48,13 @@ func Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// --- Postgres ---
-	pool, err := pgpool.NewPool(ctx, cfg.Postgres)
+	// --- Redis ---
+	redisClient, err := redis.NewClient(ctx, cfg.Redis)
 	if err != nil {
-		return fmt.Errorf("init postgres: %w", err)
+		return fmt.Errorf("init redis: %w", err)
 	}
-	defer pool.Close()
-	lg.Info("postgres connected", "max_conns", cfg.Postgres.MaxConns, "min_conns", cfg.Postgres.MinConns)
+	defer redisClient.Close() //nolint:errcheck
+	lg.Info("redis connected", "address", cfg.Redis.Addr)
 
 	// --- NATS connection + JetStream ---
 	nc, err := nats.NewConnection(cfg.NATS)
@@ -72,7 +73,9 @@ func Run() error {
 	// --- Event subscriber ---
 	// Consumes orders.created and dispatches notifications. Runs in its own
 	// goroutine; drains in-flight messages when ctx is canceled.
-	handler := handlers.NewOrderCreatedHandler(lg)
+	dedupStore := dedup.NewStore(redisClient, cfg.Dedup.ClaimTTL, cfg.Dedup.CompletionTTL)
+	notifierSvc := service.NewNotifier(dedupStore, lg)
+	handler := handlers.NewOrderCreatedHandler(notifierSvc, lg)
 	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
 		ConsumerName: cfg.NATS.ConsumerName,
@@ -91,7 +94,7 @@ func Run() error {
 	// gracefully shuts down, which keeps the process alive for the goroutines above.
 	rc := http.RouterConfig{
 		Logger: lg,
-		Db:     pool,
+		Redis:  redisClient,
 		Nats:   nc,
 		Info:   CurrentInfo(),
 	}

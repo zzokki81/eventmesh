@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
+	"github.com/redis/go-redis/v9"
 )
 
 const readinessTimeout = 2 * time.Second
@@ -18,16 +18,16 @@ const readinessTimeout = 2 * time.Second
 // from service routing without restarting it — appropriate for transient
 // dependency outages.
 type Readiness struct {
-	db     *pgxpool.Pool
 	nats   *nats.Conn
+	redis  *redis.Client
 	logger *slog.Logger
 }
 
 // NewReadiness constructs a Readiness handler with the given dependencies.
-func NewReadiness(db *pgxpool.Pool, nats *nats.Conn, logger *slog.Logger) *Readiness {
+func NewReadiness(nats *nats.Conn, redis *redis.Client, logger *slog.Logger) *Readiness {
 	return &Readiness{
-		db:     db,
 		nats:   nats,
+		redis:  redis,
 		logger: logger,
 	}
 }
@@ -38,15 +38,15 @@ func (r *Readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), readinessTimeout)
 	defer cancel()
 
-	if err := r.db.Ping(ctx); err != nil {
-		r.logger.Warn("readiness: postgres unreachable", "err", err)
-		http.Error(w, "postgres unavailable", http.StatusServiceUnavailable)
-		return
-	}
-
 	if !r.nats.IsConnected() {
 		r.logger.Warn("readiness: nats disconnected")
 		http.Error(w, "nats unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	if err := r.redis.Ping(ctx).Err(); err != nil {
+		r.logger.Warn("readiness: redis disconnected")
+		http.Error(w, "redis unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
