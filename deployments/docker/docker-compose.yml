@@ -51,6 +51,20 @@ services:
 
     restart: unless-stopped
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: eventmesh-mailpit
+    ports:
+      - "127.0.0.1:1025:1025"  # SMTP
+      - "127.0.0.1:8025:8025"  # web UI
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+
 
 volumes:
   postgres_data:

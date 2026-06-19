@@ -7,18 +7,20 @@ import (
 
 	"github.com/zzokki81/eventmesh/notifier/dedup"
 	"github.com/zzokki81/eventmesh/notifier/domain"
+	"github.com/zzokki81/eventmesh/notifier/email"
 )
 
 // notifier is the default Notifier implementation. It deduplicates with a
 // two-phase claim and dispatches the notification between the two phases.
 type notifier struct {
 	dedup  dedup.Deduplicator
+	email  email.Sender
 	logger *slog.Logger
 }
 
 // NewNotifier wires the notifier service with its dependencies.
-func NewNotifier(deduper dedup.Deduplicator, logger *slog.Logger) Notifier {
-	return &notifier{dedup: deduper, logger: logger}
+func NewNotifier(deduper dedup.Deduplicator, sender email.Sender, logger *slog.Logger) Notifier {
+	return &notifier{dedup: deduper, email: sender, logger: logger}
 }
 
 // ProcessOrderCreated claims the event, dispatches the notification, then marks
@@ -55,13 +57,24 @@ func (n *notifier) ProcessOrderCreated(ctx context.Context, eventID string, o do
 	return nil
 }
 
-// send dispatches the notification. For now it logs; an email sender will
-// replace the log statement once it is wired in.
+// send builds the order-confirmation email and dispatches it via the sender.
 func (n *notifier) send(ctx context.Context, o domain.OrderCreated) error {
-	n.logger.InfoContext(ctx, "order notification dispatched",
+	msg := email.Message{
+		To:      o.UserEmail,
+		Subject: fmt.Sprintf("Order %s confirmed", o.OrderID),
+		Plain: fmt.Sprintf(
+			"Thank you for your order.\n\nOrder ID: %s\nAmount: %s\n",
+			o.OrderID, o.Amount,
+		),
+	}
+
+	if err := n.email.Send(ctx, msg); err != nil {
+		return fmt.Errorf("send email: %w", err)
+	}
+
+	n.logger.InfoContext(ctx, "order notification sent",
 		"order_id", o.OrderID,
 		"user_email", o.UserEmail,
-		"amount", o.Amount,
 	)
 	return nil
 }

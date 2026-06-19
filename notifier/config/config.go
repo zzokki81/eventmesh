@@ -29,6 +29,9 @@ type Config struct {
 	// Dedup holds event-deduplication TTLs.
 	Dedup DedupConfig
 
+	// SMTP holds settings for sending notification emails.
+	SMTP SMTPConfig
+
 	// Logger configuration.
 	Logger logger.Config
 }

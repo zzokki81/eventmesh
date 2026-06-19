@@ -9,6 +9,7 @@ import (
 
 	"github.com/zzokki81/eventmesh/notifier/config"
 	"github.com/zzokki81/eventmesh/notifier/dedup"
+	"github.com/zzokki81/eventmesh/notifier/email"
 	"github.com/zzokki81/eventmesh/notifier/service"
 	"github.com/zzokki81/eventmesh/notifier/transports/broker/handlers"
 	"github.com/zzokki81/eventmesh/notifier/transports/http"
@@ -70,11 +71,17 @@ func Run() error {
 	}
 	lg.Info("jetstream context initialized")
 
+	// --- Email sender ---
+	emailSender, err := email.NewSMTPSender(cfg.SMTP)
+	if err != nil {
+		return fmt.Errorf("init email sender: %w", err)
+	}
+
 	// --- Event subscriber ---
 	// Consumes orders.created and dispatches notifications. Runs in its own
 	// goroutine; drains in-flight messages when ctx is canceled.
 	dedupStore := dedup.NewStore(redisClient, cfg.Dedup.ClaimTTL, cfg.Dedup.CompletionTTL)
-	notifierSvc := service.NewNotifier(dedupStore, lg)
+	notifierSvc := service.NewNotifier(dedupStore, emailSender, lg)
 	handler := handlers.NewOrderCreatedHandler(notifierSvc, lg)
 	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
