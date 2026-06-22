@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/zzokki81/eventmesh/order/domain"
+	"github.com/zzokki81/eventmesh/order/metrics"
 	"github.com/zzokki81/eventmesh/order/repository"
 	"github.com/zzokki81/eventmesh/pkg/event"
 )
@@ -29,16 +30,20 @@ type orders struct {
 	// eventBuilder wraps payloads in a standard envelope.
 	eventBuilder *event.Builder
 
+	metrics *metrics.Orders
+
 	// logger records service-level lifecycle events.
 	logger *slog.Logger
 }
 
-// NewOrders wires the order service with its dependencies.
+// NewOrders wires the order service with its dependencies. m may be nil, in
+// which case business metrics are not recorded.
 func NewOrders(
 	orderStorage repository.Orders,
 	outboxStorage repository.Outbox,
 	pool *pgxpool.Pool,
 	eventBuilder *event.Builder,
+	m *metrics.Orders,
 	logger *slog.Logger,
 ) Orders {
 	return &orders{
@@ -46,13 +51,20 @@ func NewOrders(
 		outboxStorage: outboxStorage,
 		pool:          pool,
 		eventBuilder:  eventBuilder,
+		metrics:       m,
 		logger:        logger,
 	}
 }
 
 // Create validates the request, persists a new order, and publishes an
 // orders.created event. The order is returned on success.
-func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain.Order, error) {
+func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (_ *domain.Order, err error) {
+	defer func() {
+		if err != nil {
+			s.metrics.RecordOrderCreateError(ctx)
+		}
+	}()
+
 	o := domain.New(req.UserID, req.UserEmail, req.Amount)
 
 	envelope, err := s.eventBuilder.Build(event.SubjectOrderCreated, event.VersionOrderCreated, domain.NewOrderCreated(o))
@@ -74,17 +86,18 @@ func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (*domain
 
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := s.orderStorage.Create(ctx, tx, o); err != nil {
+	if err = s.orderStorage.Create(ctx, tx, o); err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
 	}
 
-	if err := s.outboxStorage.Create(ctx, tx, outboxEvent); err != nil {
+	if err = s.outboxStorage.Create(ctx, tx, outboxEvent); err != nil {
 		return nil, fmt.Errorf("insert outbox event: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
+	s.metrics.RecordOrderCreated(ctx)
 	return o, nil
 }

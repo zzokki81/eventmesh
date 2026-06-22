@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/zzokki81/eventmesh/order/config"
+	"github.com/zzokki81/eventmesh/order/metrics"
 	"github.com/zzokki81/eventmesh/order/repository"
 	"github.com/zzokki81/eventmesh/pkg/broker"
 )
@@ -22,15 +23,18 @@ type Relay struct {
 	outbox    repository.Outbox
 	publisher broker.Publisher
 	cfg       config.RelayConfig
+	metrics   *metrics.Relay
 	logger    *slog.Logger
 }
 
-// New returns a Relay wired with its dependencies.
+// New returns a Relay wired with its dependencies. m may be nil, in which case
+// operational metrics are not recorded.
 func New(
 	pool *pgxpool.Pool,
 	outbox repository.Outbox,
 	publisher broker.Publisher,
 	cfg config.RelayConfig,
+	m *metrics.Relay,
 	logger *slog.Logger,
 ) *Relay {
 	return &Relay{
@@ -38,6 +42,7 @@ func New(
 		outbox:    outbox,
 		publisher: publisher,
 		cfg:       cfg,
+		metrics:   m,
 		logger:    logger,
 	}
 }
@@ -72,6 +77,9 @@ func (r *Relay) Run(ctx context.Context) error {
 // (with attempt count incremented) on failure. FOR UPDATE SKIP LOCKED in the
 // repository ensures concurrent relays do not pick the same row.
 func (r *Relay) processBatch(ctx context.Context) error {
+	start := time.Now()
+	defer func() { r.metrics.RecordPollDuration(ctx, time.Since(start)) }()
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -87,6 +95,9 @@ func (r *Relay) processBatch(ctx context.Context) error {
 		return nil
 	}
 
+	// Accumulate counts and record them only after the commit succeeds, so a
+	// rolled-back batch (whose rows stay pending and get retried) is not counted.
+	var published, failed int64
 	for _, e := range events {
 		if err := r.publisher.Publish(ctx, e.Type, e.Payload); err != nil {
 			r.logger.WarnContext(ctx, "publish failed, will retry",
@@ -95,6 +106,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 				"attempt", e.AttemptCount+1,
 				"err", err,
 			)
+			failed++
 			if markErr := r.outbox.MarkAsFailed(ctx, tx, e.ID, r.cfg.MaxAttempts); markErr != nil {
 				r.logger.ErrorContext(ctx, "mark as failed failed",
 					"event_id", e.ID, "err", markErr,
@@ -103,6 +115,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 			continue
 		}
 
+		published++
 		if err := r.outbox.MarkAsPublished(ctx, tx, e.ID); err != nil {
 			r.logger.ErrorContext(ctx, "mark as published failed",
 				"event_id", e.ID, "err", err,
@@ -114,5 +127,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 		return fmt.Errorf("commit: %w", err)
 	}
 
+	r.metrics.RecordRowsPublished(ctx, published)
+	r.metrics.RecordPublishErrors(ctx, failed)
 	return nil
 }
