@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/nats-io/nats.go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/zzokki81/eventmesh/pkg/httpserver/handler"
@@ -26,12 +28,17 @@ type RouterConfig struct {
 
 	// Info exposes build and runtime metadata on /info.
 	Info handler.InfoData
+
+	// Registry backs the /metrics endpoint.
+	Registry *prometheus.Registry
 }
 
 // NewRouter registers the application routes and wraps them in the middleware
 // chain. See each middleware's own documentation for its behavior.
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
+
+	mux.Handle("/metrics", promhttp.HandlerFor(cfg.Registry, promhttp.HandlerOpts{}))
 
 	readiness := handlers.NewReadiness(cfg.Nats, cfg.Redis, cfg.Logger)
 	infoHandler := handler.NewInfo(cfg.Info, cfg.Logger)
@@ -45,7 +52,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// so the last applied is the outermost and runs first. Read bottom-up for the
 	// execution order an incoming request follows.
 	h = middleware.Recovery(cfg.Logger)(h)
-	h = middleware.AccessLog(cfg.Logger, "/healthz", "/readyz")(h)
+	h = middleware.AccessLog(cfg.Logger, "/healthz", "/readyz", "/metrics")(h)
 	h = middleware.RequestID(h)
 
 	return h

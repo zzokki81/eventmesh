@@ -8,19 +8,22 @@ import (
 	"github.com/zzokki81/eventmesh/notifier/dedup"
 	"github.com/zzokki81/eventmesh/notifier/domain"
 	"github.com/zzokki81/eventmesh/notifier/email"
+	"github.com/zzokki81/eventmesh/notifier/metrics"
 )
 
 // notifier is the default Notifier implementation. It deduplicates with a
 // two-phase claim and dispatches the notification between the two phases.
 type notifier struct {
-	dedup  dedup.Deduplicator
-	email  email.Sender
-	logger *slog.Logger
+	dedup   dedup.Deduplicator
+	email   email.Sender
+	metrics *metrics.Notifier
+	logger  *slog.Logger
 }
 
-// NewNotifier wires the notifier service with its dependencies.
-func NewNotifier(deduper dedup.Deduplicator, sender email.Sender, logger *slog.Logger) Notifier {
-	return &notifier{dedup: deduper, email: sender, logger: logger}
+// NewNotifier wires the notifier service with its dependencies. m may be nil, in
+// which case business metrics are not recorded.
+func NewNotifier(deduper dedup.Deduplicator, sender email.Sender, m *metrics.Notifier, logger *slog.Logger) Notifier {
+	return &notifier{dedup: deduper, email: sender, metrics: m, logger: logger}
 }
 
 // ProcessOrderCreated claims the event, dispatches the notification, then marks
@@ -35,6 +38,7 @@ func (n *notifier) ProcessOrderCreated(ctx context.Context, eventID string, o do
 	switch status {
 	case dedup.StatusCompleted:
 		n.logger.InfoContext(ctx, "event already processed, skipping", "event_id", eventID)
+		n.metrics.RecordDuplicateSkipped(ctx)
 		return nil
 	case dedup.StatusInProgress:
 		return domain.ErrInProgress
@@ -69,9 +73,11 @@ func (n *notifier) send(ctx context.Context, o domain.OrderCreated) error {
 	}
 
 	if err := n.email.Send(ctx, msg); err != nil {
+		n.metrics.RecordEmailFailed(ctx)
 		return fmt.Errorf("send email: %w", err)
 	}
 
+	n.metrics.RecordEmailSent(ctx)
 	n.logger.InfoContext(ctx, "order notification sent",
 		"order_id", o.OrderID,
 		"user_email", o.UserEmail,

@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # The order and notifier services run on the host (not in Compose), so
+  # Prometheus reaches them through host.docker.internal.
+  - job_name: order
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+
+  - job_name: notifier
+    static_configs:
+      - targets: ["host.docker.internal:8081"]

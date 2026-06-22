@@ -4,21 +4,28 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os/signal"
 	"syscall"
 
 	"github.com/zzokki81/eventmesh/notifier/config"
 	"github.com/zzokki81/eventmesh/notifier/dedup"
 	"github.com/zzokki81/eventmesh/notifier/email"
+	"github.com/zzokki81/eventmesh/notifier/metrics"
 	"github.com/zzokki81/eventmesh/notifier/service"
 	"github.com/zzokki81/eventmesh/notifier/transports/broker/handlers"
-	"github.com/zzokki81/eventmesh/notifier/transports/http"
 	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 	"github.com/zzokki81/eventmesh/pkg/event"
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
+	"github.com/zzokki81/eventmesh/pkg/observability"
 	"github.com/zzokki81/eventmesh/pkg/redis"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+
+	httppkg "github.com/zzokki81/eventmesh/notifier/transports/http"
 )
 
 // Run bootstraps the notifier service: loads config, initializes infrastructure,
@@ -77,11 +84,23 @@ func Run() error {
 		return fmt.Errorf("init email sender: %w", err)
 	}
 
+	// --- Metrics ---
+	metricsHandle, err := observability.SetupMetrics(ctx, ServiceName, Version)
+	if err != nil {
+		return fmt.Errorf("setup metrics: %w", err)
+	}
+	defer metricsHandle.Shutdown(context.Background()) //nolint:errcheck
+
+	notifierMetrics, err := metrics.NewNotifier(otel.Meter(ServiceName))
+	if err != nil {
+		return fmt.Errorf("init business metrics: %w", err)
+	}
+
 	// --- Event subscriber ---
 	// Consumes orders.created and dispatches notifications. Runs in its own
 	// goroutine; drains in-flight messages when ctx is canceled.
 	dedupStore := dedup.NewStore(redisClient, cfg.Dedup.ClaimTTL, cfg.Dedup.CompletionTTL)
-	notifierSvc := service.NewNotifier(dedupStore, emailSender, lg)
+	notifierSvc := service.NewNotifier(dedupStore, emailSender, notifierMetrics, lg)
 	handler := handlers.NewOrderCreatedHandler(notifierSvc, lg)
 	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
@@ -91,22 +110,33 @@ func Run() error {
 		MaxDeliver:   cfg.NATS.MaxDeliver,
 	}, handler, lg)
 	go func() {
-		if err := sub.Run(ctx); err != nil {
-			lg.Error("subscriber error", "err", err)
+		if runErr := sub.Run(ctx); runErr != nil {
+			lg.Error("subscriber error", "err", runErr)
 		}
 	}()
 
 	// --- HTTP server ---
-	// Serves health/readiness/info. Blocks until ctx is canceled, then
+	// Serves health/readiness/info/metrics. Blocks until ctx is canceled, then
 	// gracefully shuts down, which keeps the process alive for the goroutines above.
-	rc := http.RouterConfig{
-		Logger: lg,
-		Redis:  redisClient,
-		Nats:   nc,
-		Info:   CurrentInfo(),
+	rc := httppkg.RouterConfig{
+		Logger:   lg,
+		Redis:    redisClient,
+		Nats:     nc,
+		Info:     CurrentInfo(),
+		Registry: metricsHandle.Registry,
 	}
-	router := http.NewRouter(rc)
-	server := httpserver.New(cfg.HTTP, router, lg)
+	router := httppkg.NewRouter(rc)
+	httpHandler := otelhttp.NewHandler(router, "notifier.http",
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			switch r.URL.Path {
+			case "/metrics", "/healthz", "/readyz":
+				return false
+			default:
+				return true
+			}
+		}),
+	)
+	server := httpserver.New(cfg.HTTP, httpHandler, lg)
 	if err := server.Run(ctx); err != nil {
 		return fmt.Errorf("http server: %w", err)
 	}

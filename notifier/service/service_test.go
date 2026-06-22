@@ -59,7 +59,7 @@ func (m *testSender) Send(_ context.Context, msg email.Message) error {
 }
 
 func newTestNotifier(d dedup.Deduplicator, s email.Sender) Notifier {
-	return NewNotifier(d, s, slog.New(slog.DiscardHandler))
+	return NewNotifier(d, s, nil, slog.New(slog.DiscardHandler))
 }
 
 func sampleOrder() domain.OrderCreated {
