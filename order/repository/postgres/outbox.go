@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -30,13 +31,25 @@ func NewOutbox() *OutboxRepository {
 // caller is responsible for rolling back on failure. The row stays in
 // pending status until the relay processes it.
 func (s *OutboxRepository) Create(ctx context.Context, tx pgx.Tx, oe *domain.OutboxEvent) error {
-	q := `INSERT INTO outbox_events (id, aggregate_id, event_type, payload, created_at)
-	           VALUES ($1, $2, $3, $4, $5)`
+	// Marshal the trace context to JSON for the trace_context column. A nil
+	// slice is encoded as SQL NULL, so events without an active trace store NULL.
+	var traceContext []byte
+	if len(oe.TraceContext) > 0 {
+		var err error
+		traceContext, err = json.Marshal(oe.TraceContext)
+		if err != nil {
+			return fmt.Errorf("marshal trace context: %w", err)
+		}
+	}
+
+	q := `INSERT INTO outbox_events (id, aggregate_id, event_type, payload, trace_context, created_at)
+	           VALUES ($1, $2, $3, $4, $5, $6)`
 	if _, err := tx.Exec(ctx, q,
 		oe.ID,
 		oe.AggregateID,
 		oe.Type,
 		oe.Payload,
+		traceContext,
 		oe.CreatedAt,
 	); err != nil {
 		return fmt.Errorf("insert outbox event: %w", err)
@@ -48,7 +61,7 @@ func (s *OutboxRepository) Create(ctx context.Context, tx pgx.Tx, oe *domain.Out
 // Each row is locked with FOR UPDATE SKIP LOCKED so concurrent relays do not
 // pick the same event; rows already locked by another transaction are skipped.
 func (s *OutboxRepository) ListPending(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.OutboxEvent, error) {
-	q := `SELECT id, aggregate_id, event_type, payload, status, attempt_count, created_at, processed_at
+	q := `SELECT id, aggregate_id, event_type, payload, trace_context, status, attempt_count, created_at, processed_at
 	           FROM outbox_events
 	           WHERE status = 'pending'
 	           ORDER BY created_at
@@ -63,17 +76,26 @@ func (s *OutboxRepository) ListPending(ctx context.Context, tx pgx.Tx, limit int
 	var events []*domain.OutboxEvent
 	for rows.Next() {
 		var oe domain.OutboxEvent
+		// trace_context is read as raw JSON and unmarshaled below; a NULL column
+		// scans into a nil slice, leaving TraceContext empty.
+		var traceContext []byte
 		if err := rows.Scan(
 			&oe.ID,
 			&oe.AggregateID,
 			&oe.Type,
 			&oe.Payload,
+			&traceContext,
 			&oe.Status,
 			&oe.AttemptCount,
 			&oe.CreatedAt,
 			&oe.ProcessedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan outbox event: %w", err)
+		}
+		if len(traceContext) > 0 {
+			if err := json.Unmarshal(traceContext, &oe.TraceContext); err != nil {
+				return nil, fmt.Errorf("unmarshal trace context: %w", err)
+			}
 		}
 		events = append(events, &oe)
 	}

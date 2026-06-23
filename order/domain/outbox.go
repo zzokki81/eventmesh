@@ -26,6 +26,13 @@ type OutboxEvent struct {
 	// schema changes.
 	Payload []byte
 
+	// TraceContext carries the W3C trace-context propagation fields
+	// (traceparent, tracestate) captured when the event was created, so the
+	// relay can continue the originating request's trace when it publishes.
+	// Empty when no trace was active. The service sets it; the domain stays
+	// free of any tracing dependency.
+	TraceContext map[string]string
+
 	// Status reflects the row's lifecycle: pending until the relay
 	// publishes it, published on success, or dead after attempts are
 	// exhausted and operator review is required.

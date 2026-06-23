@@ -12,6 +12,7 @@ import (
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
+	"github.com/zzokki81/eventmesh/pkg/observability"
 	"github.com/zzokki81/eventmesh/pkg/redis"
 )
 
@@ -31,6 +32,9 @@ type Config struct {
 
 	// SMTP holds settings for sending notification emails.
 	SMTP SMTPConfig
+
+	// Observability holds tracing settings (OTLP endpoint).
+	Observability observability.Config
 
 	// Logger configuration.
 	Logger logger.Config

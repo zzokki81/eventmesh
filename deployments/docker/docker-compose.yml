@@ -87,6 +87,20 @@ services:
 
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: eventmesh-jaeger
+    environment:
+      # Accept spans over OTLP; this is what the order/notifier services push to.
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      # Web UI for browsing traces.
+      - "127.0.0.1:16686:16686"
+      # OTLP gRPC receiver: the services on the host export spans here.
+      - "127.0.0.1:4317:4317"
+
+    restart: unless-stopped
+
 
 volumes:
   postgres_data:

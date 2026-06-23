@@ -7,12 +7,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/zzokki81/eventmesh/order/config"
 	"github.com/zzokki81/eventmesh/order/metrics"
 	"github.com/zzokki81/eventmesh/order/repository"
 	"github.com/zzokki81/eventmesh/pkg/broker"
 )
+
+// tracerName identifies this package's spans in the trace backend.
+const tracerName = "github.com/zzokki81/eventmesh/order/relay"
 
 // Relay drains the transactional outbox by polling pending rows and
 // forwarding them to the broker. It closes the dual-write gap: the
@@ -24,6 +32,7 @@ type Relay struct {
 	publisher broker.Publisher
 	cfg       config.RelayConfig
 	metrics   *metrics.Relay
+	tracer    trace.Tracer
 	logger    *slog.Logger
 }
 
@@ -43,6 +52,7 @@ func New(
 		publisher: publisher,
 		cfg:       cfg,
 		metrics:   m,
+		tracer:    otel.Tracer(tracerName),
 		logger:    logger,
 	}
 }
@@ -99,13 +109,29 @@ func (r *Relay) processBatch(ctx context.Context) error {
 	// rolled-back batch (whose rows stay pending and get retried) is not counted.
 	var published, failed int64
 	for _, e := range events {
-		if err := r.publisher.Publish(ctx, e.Type, e.Payload); err != nil {
+		// Restore the trace captured at order creation, then open a producer
+		// span as its child so the publish hop appears under the same trace.
+		// The publisher injects this span's context into the NATS headers.
+		msgCtx := otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(e.TraceContext))
+		msgCtx, span := r.tracer.Start(msgCtx, "relay.publish",
+			trace.WithSpanKind(trace.SpanKindProducer),
+			trace.WithAttributes(
+				attribute.String("messaging.system", "nats"),
+				attribute.String("messaging.destination.name", e.Type),
+				attribute.String("event.id", e.ID.String()),
+			),
+		)
+
+		if err := r.publisher.Publish(msgCtx, e.Type, e.Payload); err != nil {
 			r.logger.WarnContext(ctx, "publish failed, will retry",
 				"event_id", e.ID,
 				"type", e.Type,
 				"attempt", e.AttemptCount+1,
 				"err", err,
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "publish failed")
+			span.End()
 			failed++
 			if markErr := r.outbox.MarkAsFailed(ctx, tx, e.ID, r.cfg.MaxAttempts); markErr != nil {
 				r.logger.ErrorContext(ctx, "mark as failed failed",
@@ -114,6 +140,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 			}
 			continue
 		}
+		span.End()
 
 		published++
 		if err := r.outbox.MarkAsPublished(ctx, tx, e.ID); err != nil {
