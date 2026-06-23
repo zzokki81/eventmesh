@@ -91,6 +91,16 @@ func Run() error {
 	}
 	defer metricsHandle.Shutdown(context.Background()) //nolint:errcheck
 
+	// --- Tracing ---
+	// Installs the global tracer provider and trace-context propagator, so the
+	// consumer spans are exported to Jaeger and the trace continues from the
+	// context propagated through the NATS headers.
+	tracingHandle, err := observability.SetupTracing(ctx, ServiceName, Version, cfg.Observability.OTLPEndpoint)
+	if err != nil {
+		return fmt.Errorf("setup tracing: %w", err)
+	}
+	defer tracingHandle.Shutdown(context.Background()) //nolint:errcheck
+
 	notifierMetrics, err := metrics.NewNotifier(otel.Meter(ServiceName))
 	if err != nil {
 		return fmt.Errorf("init business metrics: %w", err)

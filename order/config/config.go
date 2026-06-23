@@ -12,6 +12,7 @@ import (
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
+	"github.com/zzokki81/eventmesh/pkg/observability"
 	"github.com/zzokki81/eventmesh/pkg/postgres"
 	"github.com/zzokki81/eventmesh/pkg/redis"
 )
@@ -32,6 +33,9 @@ type Config struct {
 
 	// Relay configuration for the relay component.
 	Relay RelayConfig
+
+	// Observability holds tracing settings (OTLP endpoint).
+	Observability observability.Config
 
 	// Logger configuration.
 	Logger logger.Config

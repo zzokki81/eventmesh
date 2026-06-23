@@ -93,6 +93,16 @@ func Run() error {
 	}
 	defer metricsHandle.Shutdown(context.Background()) //nolint:errcheck
 
+	// --- Tracing ---
+	// Installs the global tracer provider and trace-context propagator, so the
+	// spans created across the order flow are exported to Jaeger and the context
+	// propagates through HTTP and NATS headers.
+	tracingHandle, err := observability.SetupTracing(ctx, ServiceName, Version, cfg.Observability.OTLPEndpoint)
+	if err != nil {
+		return fmt.Errorf("setup tracing: %w", err)
+	}
+	defer tracingHandle.Shutdown(context.Background()) //nolint:errcheck
+
 	meter := otel.Meter(ServiceName)
 
 	orderMetrics, err := metrics.NewOrders(meter)

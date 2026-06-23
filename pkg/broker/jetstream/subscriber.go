@@ -7,10 +7,17 @@ import (
 	"log/slog"
 
 	"github.com/nats-io/nats.go/jetstream"
-
 	"github.com/zzokki81/eventmesh/pkg/broker"
 	"github.com/zzokki81/eventmesh/pkg/event"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracerName identifies this package's spans in the trace backend.
+const tracerName = "github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 
 // subscriber is the JetStream-backed broker.Subscriber implementation.
 // It owns a durable pull consumer and dispatches each decoded envelope to
@@ -19,6 +26,7 @@ type subscriber struct {
 	js      jetstream.JetStream
 	cfg     SubscriberConfig
 	handler broker.MessageHandler
+	tracer  trace.Tracer
 	logger  *slog.Logger
 
 	// consumeCtx is the runtime handle returned by Consume; held so that
@@ -33,6 +41,7 @@ func NewSubscriber(js jetstream.JetStream, cfg SubscriberConfig, handler broker.
 		js:      js,
 		cfg:     cfg,
 		handler: handler,
+		tracer:  otel.Tracer(tracerName),
 		logger:  logger,
 	}
 }
@@ -76,14 +85,29 @@ func (s *subscriber) Run(ctx context.Context) error {
 // dispatch decodes the envelope, runs the handler under panic recovery,
 // and acks/naks/terms based on the outcome.
 func (s *subscriber) dispatch(ctx context.Context, msg jetstream.Msg) {
+	// Continue the producer's trace: extract the context propagated through the
+	// NATS headers and open a consumer span around this message's handling.
+	ctx = otel.GetTextMapPropagator().Extract(ctx, natsHeaderCarrier(msg.Headers()))
+	ctx, span := s.tracer.Start(ctx, "jetstream.consume",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "nats"),
+			attribute.String("messaging.destination.name", msg.Subject()),
+		),
+	)
+	defer span.End()
+
 	var env event.Envelope
 	if err := json.Unmarshal(msg.Data(), &env); err != nil {
 		s.logger.ErrorContext(ctx, "malformed envelope, terminating message",
 			"err", err, "subject", msg.Subject(),
 		)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "malformed envelope")
 		s.term(ctx, msg, err.Error())
 		return
 	}
+	span.SetAttributes(attribute.String("event.id", env.ID.String()))
 
 	err := s.safeHandle(ctx, &env)
 	if err == nil {
@@ -94,6 +118,9 @@ func (s *subscriber) dispatch(ctx context.Context, msg jetstream.Msg) {
 		}
 		return
 	}
+
+	span.RecordError(err)
+	span.SetStatus(codes.Error, "handler failed")
 
 	if s.handler.IsRetryable(err) {
 		s.logger.WarnContext(ctx, "handler failed, nak for retry",

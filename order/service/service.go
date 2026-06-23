@@ -7,6 +7,8 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/zzokki81/eventmesh/order/domain"
 	"github.com/zzokki81/eventmesh/order/metrics"
@@ -78,6 +80,12 @@ func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (_ *doma
 	}
 
 	outboxEvent := domain.NewOutboxEvent(o.ID, event.SubjectOrderCreated, payload)
+
+	// Capture the current trace context so the relay, which publishes the event
+	// asynchronously in a different context, can continue this request's trace.
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	outboxEvent.TraceContext = carrier
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
