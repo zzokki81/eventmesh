@@ -59,6 +59,15 @@ jobs:
       - name: Test
         run: go test -race -timeout 60s ./...
 
+      - name: Integration tests
+        # Spins up a throwaway Postgres via testcontainers (the runner has a
+        # Docker daemon), so these match the local `make test-integration` run.
+        run: go test -race -tags integration -count=1 ./order/repository/postgres/...
+        env:
+          # The runner is ephemeral, so skip the Ryuk reaper container that
+          # would otherwise clean up after the test containers.
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
