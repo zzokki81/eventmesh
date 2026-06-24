@@ -19,6 +19,11 @@ type SubscriberConfig struct {
 	AckWait time.Duration
 
 	// MaxDeliver caps the number of redelivery attempts before the message
-	// is terminated server-side.
+	// is dead-lettered.
 	MaxDeliver int
+
+	// RetryBackoff is the schedule of growing pauses between redeliveries,
+	// applied per attempt via NakWithDelay. When shorter than the delivery
+	// budget, the last pause is reused for the remaining attempts.
+	RetryBackoff []time.Duration
 }

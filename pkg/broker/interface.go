@@ -13,6 +13,15 @@ type Publisher interface {
 	Publish(ctx context.Context, subject string, data []byte) error
 }
 
+// DeadLetterer moves an event that can no longer be processed to the
+// dead-letter queue. It is the single, narrow capability a Subscriber needs to
+// quarantine poison messages, keeping the subscriber free of the broader
+// Publisher (and of how a dead letter is routed and serialized).
+type DeadLetterer interface {
+	// DeadLetter records dl in the dead-letter queue.
+	DeadLetter(ctx context.Context, dl event.DeadLetter) error
+}
+
 // Subscriber binds a consumer to a MessageHandler and drives the dispatch
 // loop. Implementations decode envelopes, invoke the handler, and translate
 // the result into ack/nak/term against the underlying broker.

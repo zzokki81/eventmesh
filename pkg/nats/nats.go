@@ -16,6 +16,11 @@ import (
 // is enabled on the server. Short because this only runs at startup.
 const jetStreamInfoTimeout = 5 * time.Second
 
+// dlqMaxAge is how long dead-lettered events are retained. It is longer than
+// the primary stream's retention so poison messages survive long enough to be
+// inspected and redriven after the underlying problem is fixed.
+const dlqMaxAge = 30 * 24 * time.Hour
+
 // NewConnection creates a new NATS connection configured from cfg.
 // The caller is responsible for calling Drain() on the returned connection
 // when the application shuts down.
@@ -73,6 +78,25 @@ func SetupStream(ctx context.Context, js jetstream.JetStream, name string) error
 	})
 	if err != nil {
 		return fmt.Errorf("setup stream %q: %w", name, err)
+	}
+	return nil
+}
+
+// SetupDLQStream creates or ensures the dead-letter stream that captures poison
+// events. It binds the "<subjectPrefix>.>" wildcard so a dead letter published
+// to e.g. "dlq.orders.created" lands here. The operation is idempotent and safe
+// to run on every startup. Kept separate from the primary stream so failed
+// messages can be inspected and redriven without disturbing live traffic.
+func SetupDLQStream(ctx context.Context, js jetstream.JetStream, name, subjectPrefix string) error {
+	_, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:      name,
+		Subjects:  []string{subjectPrefix + ".>"},
+		Storage:   jetstream.FileStorage,
+		Retention: jetstream.LimitsPolicy,
+		MaxAge:    dlqMaxAge,
+	})
+	if err != nil {
+		return fmt.Errorf("setup dlq stream %q: %w", name, err)
 	}
 	return nil
 }
