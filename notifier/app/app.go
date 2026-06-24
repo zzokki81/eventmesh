@@ -78,6 +78,13 @@ func Run() error {
 	}
 	lg.Info("jetstream context initialized")
 
+	// Ensure the dead-letter stream exists before the subscriber starts, so
+	// poison messages always have somewhere to land.
+	if err = nats.SetupDLQStream(ctx, js, cfg.NATS.DLQStreamName, cfg.NATS.DLQSubjectPrefix); err != nil {
+		return fmt.Errorf("setup dlq stream: %w", err)
+	}
+	lg.Info("dlq stream ready", "stream", cfg.NATS.DLQStreamName)
+
 	// --- Email sender ---
 	emailSender, err := email.NewSMTPSender(cfg.SMTP)
 	if err != nil {
@@ -112,13 +119,15 @@ func Run() error {
 	dedupStore := dedup.NewStore(redisClient, cfg.Dedup.ClaimTTL, cfg.Dedup.CompletionTTL)
 	notifierSvc := service.NewNotifier(dedupStore, emailSender, notifierMetrics, lg)
 	handler := handlers.NewOrderCreatedHandler(notifierSvc, lg)
+	deadLetterer := jetstream.NewDeadLetterer(jetstream.NewPublisher(js), cfg.NATS.DLQSubjectPrefix)
 	sub := jetstream.NewSubscriber(js, jetstream.SubscriberConfig{
 		StreamName:   cfg.NATS.StreamName,
 		ConsumerName: cfg.NATS.ConsumerName,
 		Subject:      event.SubjectOrderCreated,
 		AckWait:      cfg.NATS.AckWait,
 		MaxDeliver:   cfg.NATS.MaxDeliver,
-	}, handler, lg)
+		RetryBackoff: cfg.NATS.RetryBackoff,
+	}, handler, deadLetterer, lg)
 	go func() {
 		if runErr := sub.Run(ctx); runErr != nil {
 			lg.Error("subscriber error", "err", runErr)
