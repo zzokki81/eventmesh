@@ -22,7 +22,7 @@ NOTIFIER_LDFLAGS := \
 .PHONY: help \
 	run-order run-notifier \
 	build build-notifier \
-	test lint up down logs clean \
+	test test-unit test-integration lint up down logs clean \
 	migrate-up migrate-down migrate-status migrate-new
 
 help:
@@ -31,7 +31,9 @@ help:
 	@echo "  run-notifier     - Run notifier service locally (requires: make up)"
 	@echo "  build            - Build order binary into ./bin/"
 	@echo "  build-notifier   - Build notifier binary into ./bin/"
-	@echo "  test             - Run tests with race detector"
+	@echo "  test             - Run unit + integration tests (integration needs Docker)"
+	@echo "  test-unit        - Run unit tests with race detector (no Docker)"
+	@echo "  test-integration - Run integration tests against a throwaway Postgres (needs Docker)"
 	@echo "  lint             - Run golangci-lint"
 	@echo "  up               - Start docker compose services"
 	@echo "  down             - Stop docker compose services"
@@ -54,8 +56,17 @@ build:
 build-notifier:
 	go build -ldflags "$(NOTIFIER_LDFLAGS)" -o bin/notifier ./cmd/notifier
 
-test:
+test: test-unit test-integration
+
+test-unit:
 	go test -race -v ./...
+
+# Integration tests are guarded by the `integration` build tag so the unit run
+# stays fast and Docker-free. They spin up a throwaway Postgres via
+# testcontainers, so a running Docker daemon is required. -count=1 disables the
+# test cache, since results depend on the live container, not just the sources.
+test-integration:
+	go test -race -tags integration -count=1 ./order/repository/postgres/...
 
 lint:
 	golangci-lint run ./...
