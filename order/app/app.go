@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/zzokki81/eventmesh/order/config"
 	"github.com/zzokki81/eventmesh/order/metrics"
@@ -27,6 +30,12 @@ import (
 	httppkg "github.com/zzokki81/eventmesh/order/transports/http"
 	pgpool "github.com/zzokki81/eventmesh/pkg/postgres"
 )
+
+// devPprofAddr is the address the pprof debug server listens on in the
+// development profile. It binds to loopback only (not 0.0.0.0) so the profiler
+// is never reachable from other hosts on the network, and is on a separate port
+// from the public HTTP server so profiles are never exposed alongside the app.
+const devPprofAddr = "127.0.0.1:6060"
 
 // Run bootstraps the application: loads config, initializes infrastructure,
 // starts the HTTP server, and blocks until shutdown signal is received.
@@ -51,6 +60,27 @@ func Run() error {
 	// so they shut down together.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// --- pprof debug server ---
+	// Runtime profiling on a separate, non-public port so the profiles are not
+	// exposed alongside the application. Only runs in the development profile.
+	if cfg.AppEnv.IsDevelopment() {
+		pprofSrv := &http.Server{Addr: devPprofAddr, Handler: http.DefaultServeMux}
+		go func() {
+			lg.Info("pprof server listening", "addr", devPprofAddr)
+			if listenErr := pprofSrv.ListenAndServe(); listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed) {
+				lg.Error("pprof server error", "err", listenErr)
+			}
+		}()
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if shutdownErr := pprofSrv.Shutdown(shutdownCtx); shutdownErr != nil { //nolint:contextcheck
+				lg.Error("pprof server shutdown", "err", shutdownErr)
+			}
+		}()
+	}
 
 	// --- Postgres ---
 	pool, err := pgpool.NewPool(ctx, cfg.Postgres)
