@@ -76,6 +76,12 @@ func mapError(err error) (int, ErrorBody) {
 			Message: err.Error(),
 		}
 
+	case errors.Is(err, domain.ErrInvalidOrderID):
+		return http.StatusBadRequest, ErrorBody{
+			Code:    "INVALID_ORDER_ID",
+			Message: err.Error(),
+		}
+
 	case errors.Is(err, domain.ErrInvalidOrderUserID):
 		return http.StatusBadRequest, ErrorBody{
 			Code:    "INVALID_ORDER_USER_ID",

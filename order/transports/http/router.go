@@ -55,6 +55,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("GET /readyz", readiness)
 	mux.Handle("GET /info", infoHandler)
 	mux.HandleFunc("POST /orders", orderHandler.Create)
+	mux.HandleFunc("GET /orders/{id}", orderHandler.Get)
 
 	var h http.Handler = mux
 	// The order of middleware is important: each line wraps the previous handler,
