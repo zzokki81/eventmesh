@@ -22,7 +22,7 @@ NOTIFIER_LDFLAGS := \
 .PHONY: help \
 	run-order run-notifier \
 	build build-notifier \
-	test test-unit test-integration lint up down logs clean \
+	test test-unit test-integration lint loadtest up down logs clean \
 	migrate-up migrate-down migrate-status migrate-new
 
 help:
@@ -35,6 +35,7 @@ help:
 	@echo "  test-unit        - Run unit tests with race detector (no Docker)"
 	@echo "  test-integration - Run integration tests against a throwaway Postgres (needs Docker)"
 	@echo "  lint             - Run golangci-lint"
+	@echo "  loadtest         - Run the k6 load test against a running order service (needs Docker)"
 	@echo "  up               - Start docker compose services"
 	@echo "  down             - Stop docker compose services"
 	@echo "  logs             - Tail docker compose logs"
@@ -70,6 +71,21 @@ test-integration:
 
 lint:
 	golangci-lint run ./...
+
+# Runs k6 via Docker (no local install needed). It reaches the order service
+# through host.docker.internal, which resolves to the host on macOS/Windows
+# (Docker Desktop) and on Linux via --add-host=...:host-gateway, so the target
+# is portable across all three. Requires the stack (make up) and the order
+# service (make run-order) to be running.
+#
+# Pass extra k6 flags via K6_ARGS, e.g. to override the script's stages and run
+# with 300 virtual users:
+#   make loadtest K6_ARGS="--stage 30s:300 --stage 1m:300 --stage 10s:0"
+loadtest:
+	docker run --rm \
+		--add-host=host.docker.internal:host-gateway \
+		-e BASE_URL=http://host.docker.internal:8080 \
+		-v "$(CURDIR)/loadtest:/scripts" grafana/k6 run $(K6_ARGS) /scripts/orders.js
 
 clean:
 	rm -rf bin/
