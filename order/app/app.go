@@ -18,10 +18,13 @@ import (
 	"github.com/zzokki81/eventmesh/pkg/broker/jetstream"
 	"github.com/zzokki81/eventmesh/pkg/event"
 	"github.com/zzokki81/eventmesh/pkg/httpserver"
+	"github.com/zzokki81/eventmesh/pkg/httpserver/middleware"
 	"github.com/zzokki81/eventmesh/pkg/logger"
 	"github.com/zzokki81/eventmesh/pkg/nats"
 	"github.com/zzokki81/eventmesh/pkg/observability"
+	"github.com/zzokki81/eventmesh/pkg/redis"
 
+	"github.com/go-redis/redis_rate/v10"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 
@@ -158,6 +161,30 @@ func Run() error {
 		}
 	}()
 
+	// --- Rate limiter ---
+	// Backed by Redis so the limit is shared across every instance of the
+	// service rather than tracked per-process. Disabled by default; only
+	// connects to Redis when RATE_LIMIT_ENABLED=true.
+	//
+	// Rate limiting is an auxiliary protection, not a core dependency like
+	// Postgres or NATS: if Redis cannot be reached at startup, the order
+	// service still starts (unlimited) rather than refusing to come up over
+	// an outage in a feature that only guards against abuse.
+	var rateLimiter *redis_rate.Limiter
+	rateLimit := redis_rate.Limit{Rate: cfg.RateLimit.RPS, Burst: cfg.RateLimit.Burst, Period: time.Second}
+	if cfg.RateLimit.Enabled {
+		redisClient, redisErr := redis.NewClient(ctx, cfg.Redis)
+		if redisErr != nil {
+			lg.Error("rate limiter disabled: redis unavailable", "err", redisErr)
+		} else {
+			defer redisClient.Close() //nolint:errcheck
+			lg.Info("redis connected", "address", cfg.Redis.Addr)
+
+			rateLimiter = redis_rate.NewLimiter(redisClient)
+			lg.Info("rate limiter enabled", "rps", cfg.RateLimit.RPS, "burst", cfg.RateLimit.Burst)
+		}
+	}
+
 	// --- HTTP server ---
 	// Serves health/readiness/info/metrics. Blocks until ctx is canceled, then
 	// gracefully shuts down, which keeps the process alive for the relay goroutine above.
@@ -168,6 +195,11 @@ func Run() error {
 		Info:         CurrentInfo(),
 		OrderService: orderService,
 		Registry:     metricsHandle.Registry,
+		RateLimit: middleware.RateLimitConfig{
+			Limiter:           rateLimiter,
+			Limit:             rateLimit,
+			TrustProxyHeaders: cfg.RateLimit.TrustProxyHeaders,
+		},
 	}
 
 	router := httppkg.NewRouter(rc)
