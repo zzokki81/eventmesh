@@ -34,6 +34,10 @@ type RouterConfig struct {
 
 	// Registry is used by the metrics endpoint to serve metrics.
 	Registry *prometheus.Registry
+
+	// RateLimit configures the per-client-IP request limit. A zero value
+	// (nil Limiter) disables rate limiting.
+	RateLimit middleware.RateLimitConfig
 }
 
 // NewRouter registers the application routes and wraps them in the middleware
@@ -57,6 +61,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// so the last applied is the outermost and runs first. Read bottom-up for the
 	// execution order an incoming request follows.
 	h = middleware.Recovery(cfg.Logger)(h)
+	if cfg.RateLimit.Limiter != nil {
+		// Applied before AccessLog (so it ends up inside it) so a 429 still
+		// shows up as a normal access log line rather than being invisible.
+		h = middleware.RateLimit(cfg.RateLimit, cfg.Logger)(h)
+	}
 	h = middleware.AccessLog(cfg.Logger, "/healthz", "/readyz", "/metrics")(h)
 	h = middleware.RequestID(h)
 

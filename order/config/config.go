@@ -42,6 +42,9 @@ type Config struct {
 	// Relay configuration for the relay component.
 	Relay RelayConfig
 
+	// RateLimit configures the Redis-backed rate limiter on the order write path.
+	RateLimit RateLimitConfig
+
 	// Observability holds tracing settings (OTLP endpoint).
 	Observability observability.Config
 
