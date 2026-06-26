@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -108,4 +109,10 @@ func (s *orders) Create(ctx context.Context, req *domain.CreateRequest) (_ *doma
 
 	s.metrics.RecordOrderCreated(ctx)
 	return o, nil
+}
+
+// Get retrieves an order by ID. Returns domain.ErrOrderNotFound if no order
+// matches.
+func (s *orders) Get(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
+	return s.orderStorage.GetByID(ctx, id)
 }

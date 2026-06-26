@@ -4,6 +4,8 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/zzokki81/eventmesh/order/domain"
 )
 
@@ -12,4 +14,8 @@ import (
 type Orders interface {
 	// Create creates a new order from the given request and returns it.
 	Create(ctx context.Context, req *domain.CreateRequest) (*domain.Order, error)
+
+	// Get retrieves an order by ID. Returns domain.ErrOrderNotFound if no
+	// order matches.
+	Get(ctx context.Context, id uuid.UUID) (*domain.Order, error)
 }

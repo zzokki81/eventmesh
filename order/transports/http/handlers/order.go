@@ -54,3 +54,22 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteJSON(w, r, http.StatusCreated, dto.OrderResponseFrom(o))
 }
+
+// Get handles GET /orders/{id}. It parses the order ID from the path,
+// delegates to the service, and writes the resulting order or an error
+// response.
+func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := domain.ParseOrderID(r.PathValue("id"))
+	if err != nil {
+		response.WriteError(w, r, err)
+		return
+	}
+
+	o, err := h.service.Get(r.Context(), id)
+	if err != nil {
+		response.WriteError(w, r, err)
+		return
+	}
+
+	response.WriteJSON(w, r, http.StatusOK, dto.OrderResponseFrom(o))
+}

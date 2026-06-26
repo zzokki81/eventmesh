@@ -46,3 +46,13 @@ func New(userID uuid.UUID, userEmail string, amount decimal.Decimal) *Order {
 		UpdatedAt: now,
 	}
 }
+
+// ParseOrderID parses a raw string into an order ID.
+// Returns ErrInvalidOrderID if id is not a valid UUID.
+func ParseOrderID(id string) (uuid.UUID, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, ErrInvalidOrderID
+	}
+	return uid, nil
+}
