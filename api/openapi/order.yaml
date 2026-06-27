@@ -1,0 +1,172 @@
+openapi: 3.0.3
+info:
+  title: EventMesh Order Service API
+  description: |
+    HTTP API for the order service. Covers creating an order and fetching a
+    single order by its identifier.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development
+paths:
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Create an order
+      description: |
+        Creates a new order. The request body is validated for shape and
+        value; on success the created order is returned with status `pending`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          description: |
+            Invalid request: malformed JSON, failed field validation, or an
+            invalid user id or amount.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      summary: Get an order by id
+      description: Returns a single order identified by its UUID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          description: The id path parameter is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: No order exists with the given id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required:
+        - user_id
+        - user_email
+        - amount
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: Identifier of the user placing the order (UUID).
+          example: 5f8b2c1e-3d4a-4b6c-8e9f-0a1b2c3d4e5f
+        user_email:
+          type: string
+          format: email
+          description: Email address of the user placing the order.
+          example: user@example.com
+        amount:
+          type: string
+          description: Order total as a decimal-formatted string.
+          example: "49.99"
+    OrderResponse:
+      type: object
+      required:
+        - id
+        - user_id
+        - amount
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Order identifier.
+        user_id:
+          type: string
+          format: uuid
+          description: Identifier of the user that placed the order.
+        amount:
+          type: string
+          description: Order total as a decimal-formatted string.
+          example: "49.99"
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last modification.
+    OrderStatus:
+      type: string
+      description: Current status of the order.
+      enum:
+        - pending
+        - processing
+        - completed
+        - failed
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error identifier.
+          example: ORDER_NOT_FOUND
+        message:
+          type: string
+          description: Human-readable description of the error.
+          example: order not found
