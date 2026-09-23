@@ -32,7 +32,7 @@ func (d *deadLetterer) DeadLetter(ctx context.Context, dl event.DeadLetter) erro
 	}
 
 	subject := d.subjectPrefix + "." + dl.Subject
-	if err := d.publisher.Publish(ctx, subject, data); err != nil {
+	if err := d.publisher.Publish(ctx, broker.Message{Subject: subject, Data: data}); err != nil {
 		return fmt.Errorf("publish dead letter to %s: %w", subject, err)
 	}
 	return nil

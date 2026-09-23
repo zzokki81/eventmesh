@@ -6,11 +6,27 @@ import (
 	"github.com/zzokki81/eventmesh/pkg/event"
 )
 
+// Message is a single outbound message: pre-serialized data addressed to a
+// subject, with optional broker-level headers. Headers is for
+// caller-supplied metadata (e.g. a dedup key, content type); implementations
+// are free to add their own alongside it, such as trace context injected
+// from ctx.
+type Message struct {
+	// Subject is the destination the message is published to.
+	Subject string
+
+	// Data is the pre-serialized message payload.
+	Data []byte
+
+	// Headers carries caller-supplied broker-level metadata alongside Data.
+	Headers map[string]string
+}
+
 // Publisher emits envelopes to the broker. Implementations are responsible
 // for serialization and delivery semantics.
 type Publisher interface {
-	// Publish sends pre-serialized data to subject and waits for the server ack.
-	Publish(ctx context.Context, subject string, data []byte) error
+	// Publish sends msg and waits for the server ack.
+	Publish(ctx context.Context, msg Message) error
 }
 
 // DeadLetterer moves an event that can no longer be processed to the
