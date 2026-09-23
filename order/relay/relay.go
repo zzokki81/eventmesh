@@ -122,7 +122,7 @@ func (r *Relay) processBatch(ctx context.Context) error {
 			),
 		)
 
-		if err := r.publisher.Publish(msgCtx, e.Type, e.Payload); err != nil {
+		if err := r.publisher.Publish(msgCtx, broker.Message{Subject: e.Type, Data: e.Payload}); err != nil {
 			r.logger.WarnContext(ctx, "publish failed, will retry",
 				"event_id", e.ID,
 				"type", e.Type,

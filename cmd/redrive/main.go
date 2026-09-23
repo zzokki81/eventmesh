@@ -114,7 +114,7 @@ func redriveOne(ctx context.Context, publisher broker.Publisher, data []byte) er
 		return fmt.Errorf("encode envelope: %w", err)
 	}
 
-	if err := publisher.Publish(ctx, dl.Subject, payload); err != nil {
+	if err := publisher.Publish(ctx, broker.Message{Subject: dl.Subject, Data: payload}); err != nil {
 		return fmt.Errorf("republish to %s: %w", dl.Subject, err)
 	}
 	return nil
