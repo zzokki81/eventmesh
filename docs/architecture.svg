@@ -1,0 +1,166 @@
+<svg width="1000" height="860" viewBox="0 0 1000 860" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="860" fill="#ffffff"/>
+
+  <text x="500" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">EventMesh — Architecture</text>
+  <text x="500" y="54" text-anchor="middle" font-size="13" fill="#64748b">Order write path (transactional outbox) and event-driven notification path (NATS JetStream)</text>
+
+  <!-- ===================== CONNECTORS (drawn first, under boxes) ===================== -->
+
+  <!-- Row1 -> Row2 -->
+  <path d="M260,125 L360,125" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M600,125 L700,125" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M260,305 L360,305" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M600,305 L700,305" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Postgres -> Relay (relay polls the outbox table) -->
+  <path d="M830,170 L830,210 L150,210 L150,260" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="490" y="203" text-anchor="middle" font-size="11.5" fill="#64748b">relay polls pending outbox rows</text>
+
+  <!-- JetStream -> DLQ -> redrive -->
+  <path d="M480,360 L480,420" stroke="#b45309" stroke-width="2" fill="none" marker-end="url(#arrowAmber)"/>
+  <text x="610" y="395" text-anchor="middle" font-size="11" fill="#92400e">exhausted retries</text>
+  <path d="M480,500 L480,540" stroke="#b45309" stroke-width="2" fill="none" marker-end="url(#arrowAmber)"/>
+
+  <!-- redrive loop-back into JetStream -->
+  <path d="M360,580 L300,580 L300,285 L360,285" stroke="#b45309" stroke-width="2" fill="none" stroke-dasharray="1,0" marker-end="url(#arrowAmber)"/>
+  <text x="230" y="435" font-size="11" fill="#92400e" transform="rotate(-90 230 435)" text-anchor="middle">republish to original subject</text>
+
+  <!-- Notifier -> Redis / SMTP -->
+  <path d="M760,350 L760,420" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M900,350 L900,420" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Order Service -> Redis (per-client-IP rate limiter, opt-in, shares the same Redis) -->
+  <path d="M580,170 L650,170 L650,460 L700,460" stroke="#0f766e" stroke-width="1.5" fill="none" stroke-dasharray="4,4" marker-end="url(#arrowTeal)"/>
+  <text x="662" y="300" font-size="11" fill="#0f766e" transform="rotate(-90 662 300)" text-anchor="middle">rate limiter (opt-in)</text>
+
+  <!-- Telemetry (dashed): Order Service + Notifier Service -> Prometheus + Jaeger -->
+  <path d="M400,170 L330,170 L330,690" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="6,5" marker-end="url(#arrowGray)"/>
+  <path d="M860,350 L670,350 L670,690" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="6,5" marker-end="url(#arrowGray)"/>
+  <path d="M330,640 L670,640" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="6,5"/>
+  <circle cx="330" cy="640" r="3" fill="#94a3b8"/>
+  <circle cx="670" cy="640" r="3" fill="#94a3b8"/>
+
+  <!-- ===================== ROW 1 ===================== -->
+
+  <g>
+    <rect x="40" y="80" width="220" height="90" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="150" y="118" text-anchor="middle" font-size="15.5" font-weight="600" fill="#0f172a">Client</text>
+    <text x="150" y="140" text-anchor="middle" font-size="12" fill="#475569">API consumer</text>
+  </g>
+
+  <g>
+    <rect x="360" y="80" width="240" height="90" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="480" y="112" text-anchor="middle" font-size="15.5" font-weight="600" fill="#0f172a">Order Service</text>
+    <text x="480" y="133" text-anchor="middle" font-size="12" fill="#475569">HTTP :8080</text>
+    <text x="480" y="150" text-anchor="middle" font-size="11.5" fill="#475569">POST /orders · GET /orders/{id}</text>
+  </g>
+
+  <g>
+    <rect x="700" y="80" width="260" height="90" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="830" y="112" text-anchor="middle" font-size="15.5" font-weight="600" fill="#0f172a">PostgreSQL</text>
+    <text x="830" y="133" text-anchor="middle" font-size="12" fill="#475569">orders + outbox_events</text>
+    <text x="830" y="150" text-anchor="middle" font-size="11.5" fill="#475569">written in a single transaction</text>
+  </g>
+
+  <!-- ===================== ROW 2 ===================== -->
+
+  <g>
+    <rect x="40" y="260" width="220" height="90" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="150" y="298" text-anchor="middle" font-size="15.5" font-weight="600" fill="#0f172a">Outbox Relay</text>
+    <text x="150" y="320" text-anchor="middle" font-size="12" fill="#475569">polls, publishes,</text>
+    <text x="150" y="335" text-anchor="middle" font-size="12" fill="#475569">marks row status</text>
+  </g>
+
+  <g>
+    <rect x="360" y="250" width="240" height="110" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="480" y="285" text-anchor="middle" font-size="16" font-weight="700" fill="#1e3a8a">NATS JetStream</text>
+    <text x="480" y="308" text-anchor="middle" font-size="12" fill="#1e40af">stream: EVENTMESH</text>
+    <text x="480" y="325" text-anchor="middle" font-size="12" fill="#1e40af">subjects: orders.&gt;</text>
+    <text x="480" y="345" text-anchor="middle" font-size="11" fill="#3b5da8">durable pull consumer · at-least-once</text>
+  </g>
+
+  <g>
+    <rect x="700" y="260" width="260" height="90" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="830" y="292" text-anchor="middle" font-size="15.5" font-weight="600" fill="#0f172a">Notifier Service</text>
+    <text x="830" y="313" text-anchor="middle" font-size="12" fill="#475569">durable consumer</text>
+    <text x="830" y="330" text-anchor="middle" font-size="11.5" fill="#475569">AckWait · MaxDeliver · backoff</text>
+  </g>
+
+  <!-- ===================== ROW 3 (branches) ===================== -->
+
+  <g>
+    <rect x="360" y="420" width="240" height="80" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+    <text x="480" y="450" text-anchor="middle" font-size="14.5" font-weight="600" fill="#78350f">Dead-Letter Stream</text>
+    <text x="480" y="470" text-anchor="middle" font-size="11.5" fill="#92400e">subjects: dlq.&gt;</text>
+    <text x="480" y="486" text-anchor="middle" font-size="11" fill="#92400e">terminal / non-retryable events</text>
+  </g>
+
+  <g>
+    <rect x="700" y="420" width="120" height="80" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="760" y="446" text-anchor="middle" font-size="14" font-weight="600" fill="#0f172a">Redis</text>
+    <text x="760" y="463" text-anchor="middle" font-size="10.5" fill="#475569">dedup store</text>
+    <text x="760" y="477" text-anchor="middle" font-size="10.5" fill="#475569">+ rate limit</text>
+    <text x="760" y="491" text-anchor="middle" font-size="9.5" fill="#94a3b8">(shared instance)</text>
+  </g>
+
+  <g>
+    <rect x="840" y="420" width="120" height="80" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="900" y="452" text-anchor="middle" font-size="14" font-weight="600" fill="#0f172a">SMTP</text>
+    <text x="900" y="470" text-anchor="middle" font-size="11" fill="#475569">Mailpit (dev)</text>
+  </g>
+
+  <!-- ===================== ROW 4 ===================== -->
+
+  <g>
+    <rect x="360" y="540" width="240" height="80" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+    <text x="480" y="570" text-anchor="middle" font-size="14.5" font-weight="600" fill="#78350f">redrive (CLI)</text>
+    <text x="480" y="590" text-anchor="middle" font-size="11.5" fill="#92400e">manual: republish, then</text>
+    <text x="480" y="605" text-anchor="middle" font-size="11.5" fill="#92400e">delete from the DLQ</text>
+  </g>
+
+  <!-- ===================== ROW 5 (observability) ===================== -->
+
+  <g>
+    <rect x="200" y="690" width="260" height="90" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+    <text x="330" y="723" text-anchor="middle" font-size="15" font-weight="600" fill="#4c1d95">Prometheus</text>
+    <text x="330" y="744" text-anchor="middle" font-size="11.5" fill="#5b21b6">scrapes /metrics</text>
+    <text x="330" y="760" text-anchor="middle" font-size="11" fill="#5b21b6">:9090</text>
+  </g>
+
+  <g>
+    <rect x="540" y="690" width="260" height="90" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+    <text x="670" y="723" text-anchor="middle" font-size="15" font-weight="600" fill="#4c1d95">Jaeger</text>
+    <text x="670" y="744" text-anchor="middle" font-size="11.5" fill="#5b21b6">OTLP traces</text>
+    <text x="670" y="760" text-anchor="middle" font-size="11" fill="#5b21b6">:16686</text>
+  </g>
+
+  <!-- ===================== LEGEND ===================== -->
+  <g transform="translate(40,820)">
+    <line x1="0" y1="0" x2="30" y2="0" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="38" y="4" font-size="11.5" fill="#334155">data flow</text>
+
+    <line x1="160" y1="0" x2="190" y2="0" stroke="#b45309" stroke-width="2" marker-end="url(#arrowAmber)"/>
+    <text x="198" y="4" font-size="11.5" fill="#92400e">failure / redrive path</text>
+
+    <line x1="420" y1="0" x2="450" y2="0" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,5" marker-end="url(#arrowGray)"/>
+    <text x="458" y="4" font-size="11.5" fill="#475569">metrics &amp; traces</text>
+
+    <line x1="650" y1="0" x2="680" y2="0" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowTeal)"/>
+    <text x="688" y="4" font-size="11.5" fill="#0f766e">optional path</text>
+  </g>
+</svg>
