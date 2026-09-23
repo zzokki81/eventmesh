@@ -8,6 +8,9 @@
 *.so
 *.dylib
 bin/
+# Stray build output left in the repo root (e.g. `go build ./cmd/redrive`
+# run without -o bin/...); anchored to root so it doesn't match cmd/redrive/.
+/redrive
 
 # Test binary, built with `go test -c`
 *.test
@@ -29,5 +32,6 @@ go.work.sum
 .env
 
 # Editor/IDE
- .idea/
- .vscode/
+.idea/
+.vscode/
+.claude/
